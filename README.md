@@ -1,4 +1,4 @@
-# LTS-SINDy
+# ILTS-SINDy
 
 Outlier-robust Sparse Identification of Nonlinear Dynamics (SINDy) via Iterative Least Trimmed Squares (ILTS).
 
