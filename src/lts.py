@@ -44,7 +44,7 @@ def ilts(A,b, p, max_it = 100):
 
     return xr, fr, 0, I_sorted
 
-def SINDy_LTS(x_dot, D, p, eps=1e-1, alpha = 0.0, max_it=2000):
+def SINDy_LTS(x_dot, D, p, threshold=1e-1, alpha = 0.0, max_it=2000):
     n = x_dot.shape[-1]
     m = x_dot.shape[0]
     nD = D.shape[-1]
@@ -60,18 +60,18 @@ def SINDy_LTS(x_dot, D, p, eps=1e-1, alpha = 0.0, max_it=2000):
             print('[Warning] LOVO not finished successefuly')
         Ap = D[Ir]
         y_dot[:,0] = x_dot[Ir,i]
-        Ci = SINDy(y_dot, Ap, eps=eps,alpha=alpha)
+        Ci = SINDy(y_dot, Ap, threshold=threshold,alpha=alpha)
         Xi[:,i:i+1] = Ci
     return Xi, I_sorted
 
-def SINDy(x_dot, D, eps = 1e-2, alpha = 0.0, scaling_eps = False):
+def SINDy(x_dot, D, threshold = 1e-2, alpha = 0.0, scaling_eps = False):
     n = x_dot.shape[-1]
     nD = D.shape[-1]
 
     # Xi = np.zeros((nD, n))
     Xi = np.linalg.lstsq(D,x_dot,rcond=None)[0]
     if scaling_eps:
-        eps = eps / np.linalg.norm(D,axis = 0)
+        threshold = threshold / np.linalg.norm(D,axis = 0)
     for i in range(n):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=LinAlgWarning)
@@ -80,7 +80,7 @@ def SINDy(x_dot, D, eps = 1e-2, alpha = 0.0, scaling_eps = False):
         nnz = np.count_nonzero(Ei)
         old_nnz = nD+1
         while nnz != old_nnz:
-            small_ind = np.abs(Ei) < eps # pyright: ignore[reportCallIssue]
+            small_ind = np.abs(Ei) < threshold # pyright: ignore[reportCallIssue]
             Ei[small_ind] = 0
             bi = ~small_ind
 

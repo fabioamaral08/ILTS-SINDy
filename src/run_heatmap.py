@@ -110,6 +110,14 @@ def run_solver(y_dot, D, solver,eps, *args):
         model = ps.SINDy(optimizer=opt_esindy, feature_library=lib)
         model.fit(data, dt)
         coeff = model.coefficients().T
+    elif solver.upper() == 'WSINDY':
+        dt, lib, K = args
+        t_train = np.arange(y_dot.shape[0]) * dt
+        weak_lib = ps.WeakPDELibrary(function_library=lib, spatiotemporal_grid=t_train, is_uniform=True, K=K)
+        opt = ps.STLSQ(threshold=eps)
+        model = ps.SINDy(optimizer=opt, feature_library=weak_lib)
+        model.fit(data, dt)
+        coeff = model.coefficients().T
     else:
         raise Exception('Invalid solver')
     return coeff
