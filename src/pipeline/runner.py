@@ -45,7 +45,7 @@ class MethodRunner:
 
 
     def run_single(self, data: np.ndarray, t: np.ndarray) -> RunResult:
-        grid = self.method.hyperparameter_grid(self.problem)
+        grid = self.method.hyperparameter_grid()
         names = list(grid)
         best: RunResult | None = None
         for values in itertools.product(*(grid[name] for name in names)):

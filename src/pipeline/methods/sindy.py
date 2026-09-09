@@ -19,8 +19,8 @@ class SINDyMethod(Method):
         return {"threshold": problem.default_eps()}
 
     def fit(self, data: np.ndarray, t: np.ndarray, library, **hyperparams) -> FitResult:
-        eps = hyperparams["eps"]
+        eps = hyperparams["threshold"]
         x_dot = ps.FiniteDifference()._differentiate(data, t=t)
         D = np.array(library.fit_transform(data))
-        coeff = lts.SINDy(x_dot, D, eps=eps)
+        coeff = lts.SINDy(x_dot, D, threshold=eps)
         return FitResult(coefficients=coeff)

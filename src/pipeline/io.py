@@ -49,6 +49,7 @@ def results_path(
 def save_dataset(path: Path, grid: dict[float, dict[float, dict]]) -> None:
     """`grid`: noise_level -> outlier_percent -> {"data": array, "outlier_index": array}."""
     save_dct = {}
+    path.parent.mkdir(parents=True, exist_ok=True)
     for noise_level, by_outlier in grid.items():
         result_dct = {}
         for outlier_percent, payload in by_outlier.items():
@@ -72,6 +73,7 @@ def load_dataset_cell(
 def save_run_results(path: Path, grid: dict[float, dict[float, list]]) -> None:
     """`grid`: noise_level -> outlier_percent -> list[RunResult]."""
     save_dct = {}
+    path.parent.mkdir(parents=True, exist_ok=True)
     for noise_level, by_outlier in grid.items():
         result_dct = {}
         for outlier_percent, run_results in by_outlier.items():

@@ -23,7 +23,7 @@ def main():
     parser.add_argument(
         "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9))
     )
-    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("-o", "--output-dir", default="data")
     args = parser.parse_args()
 

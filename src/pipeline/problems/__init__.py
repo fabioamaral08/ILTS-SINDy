@@ -33,4 +33,4 @@ def list_problems() -> list[str]:
 
 
 # Import concrete problems so they register themselves.
-from . import sir, lorenz, lotka_volterra
+from . import sir, lorenz, lotka_volterra, vanderpol, rossler, abcflow
