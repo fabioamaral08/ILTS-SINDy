@@ -48,6 +48,6 @@ class LorenzProblem(Problem):
         true_coeff[1, 1] = 1.0  # dy/dt = x + a*y
         true_coeff[2, 1] = a
         true_coeff[0, 2] = b #dz/dy = b + zx - zc
-        true_coeff[7, 2] = 1.0 #dz/dy = b + zx - zc
-        true_coeff[3, 2] = -c #dz/dy = b + zx - zc
+        true_coeff[7, 2] = 1.0 
+        true_coeff[3, 2] = -c 
         return true_coeff

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Sequence
 
 import matplotlib.pyplot as plt
+import seaborn as sb
 import numpy as np
 
 from . import io, metrics
@@ -111,7 +112,8 @@ def plot_metric_grid(
                 ax.axis("off")
                 continue
             grid = rs.metric_grid(metric)
-            im = ax.imshow(grid, origin="lower", cmap="magma", vmin=0, vmax=vmax, aspect="auto")
+            # im = ax.imshow(grid, origin="lower", cmap="magma", vmin=0, vmax=vmax, aspect="auto")
+            im = sb.heatmap(grid, annot=True, cmap= "magma", vmin=0, vmax=vmax, ax=ax)
             ax.set_xticks(range(len(rs.outlier_fractions)))
             ax.set_xticklabels(
                 [f"{v * 100:g}%" for v in rs.outlier_fractions], rotation=45, ha="right"
