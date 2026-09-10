@@ -44,7 +44,7 @@ class SIRProblem(Problem):
 
     def true_coefficients(self, library) -> np.ndarray:
         library.fit_transform(np.array([self.x0, self.x0]))
-        n_features = len(library.get_feature_names(["x", "y", "z"]))
+        n_features = len(library.get_feature_names(self.state_names))
         true_coeff = np.zeros((n_features, len(self.state_names)))
         beta, gamma = self.true_params
         # Feature order: identity(S), identity(I), identity(R),

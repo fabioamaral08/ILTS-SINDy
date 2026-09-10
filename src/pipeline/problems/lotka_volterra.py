@@ -38,7 +38,7 @@ class LotkaVolterraProblem(Problem):
 
     def true_coefficients(self, library) -> np.ndarray:
         library.fit_transform(np.array([self.x0, self.x0]))
-        n_features = len(library.get_feature_names(["x", "y"]))
+        n_features = len(library.get_feature_names(self.state_names))
         true_coeff = np.zeros((n_features, len(self.state_names)))
         alpha, beta = self.true_params
         # Feature order:  x, y, x^2, xy, y^2, ...

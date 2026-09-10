@@ -40,7 +40,7 @@ class LorenzProblem(Problem):
 
     def true_coefficients(self, library) -> np.ndarray:
         library.fit_transform(np.array([self.x0, self.x0]))
-        n_features = len(library.get_feature_names(["x", "y", "z"]))
+        n_features = len(library.get_feature_names(self.state_names))
         true_coeff = np.zeros((n_features, len(self.state_names)), dtype=float)
         A, B, C, _ = self.true_params
         # Feature order: 1, x, y, z, x^2, xy, xz, y^2, yz, z^2, ...
