@@ -41,10 +41,13 @@ class LorenzProblem(Problem):
         library.fit_transform(np.array([self.x0, self.x0]))
         n_features = len(library.get_feature_names(self.state_names))
         true_coeff = np.zeros((n_features, len(self.state_names)))
-        mu, = self.true_params
+        a, b, c = self.true_params
         # Feature order:  x, y, x^2, xy, y^2, ...
-        true_coeff[1, 0] = 1.0  # dx/dt = y
-        true_coeff[0, 1] = -1.0  # dy/dt = mu * y - mu*y*x^2 - x
-        true_coeff[1, 1] = mu
-        true_coeff[6, 1] = -mu
+        true_coeff[2, 0] = -1.0  # dx/dt = -y -z
+        true_coeff[3, 0] = -1.0  
+        true_coeff[1, 1] = 1.0  # dy/dt = x + a*y
+        true_coeff[2, 1] = a
+        true_coeff[0, 2] = b #dz/dy = b + zx - zc
+        true_coeff[7, 2] = 1.0 #dz/dy = b + zx - zc
+        true_coeff[3, 2] = -c #dz/dy = b + zx - zc
         return true_coeff
