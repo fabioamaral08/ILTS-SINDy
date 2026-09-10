@@ -38,6 +38,5 @@ def trajectory_error(true_traj: np.ndarray, sim_traj: np.ndarray, kind: str = "n
 def derivative_error(data_dot: np.ndarray, coefficients: np.ndarray, Theta: np.ndarray) -> float:
     """NRMSE between true derivatives and those reconstructed as
     Theta @ coefficients, normalized by the true derivatives' RMS."""
-    rmse = float(np.sqrt(np.mean((data_dot - Theta @ coefficients ) ** 2)))
-    scale = float(np.sqrt(np.mean(data_dot**2)))
-    return rmse / scale if scale > 0 else rmse
+    RSS = float(np.sum((data_dot - Theta @ coefficients ) ** 2))
+    return RSS

@@ -35,13 +35,15 @@ class MethodRunner:
 
     def _score(self, coefficients: np.ndarray, data: np.ndarray, t: np.ndarray) -> float:
     
-        # Re-fit defensively: some methods fit `self.library` only
-        # indirectly (e.g. wrapped inside a WeakPDELibrary), so this
-        # guarantees it is in a fitted state before `lts.simulate` calls
-        # `.transform` on it.
+        ## Compute the Akaike information criterion (AIC)
         D = self.library.fit_transform(data)
         data_dot = ps.FiniteDifference()._differentiate(data, t=t)
-        return metrics.derivative_error(data_dot, coefficients, D)
+        RSS = metrics.derivative_error(data_dot, coefficients, D)
+        l = data.shape[0]
+        k = np.count_nonzero(coefficients)
+        AIC = l * np.log(RSS/l) + 2*k
+        AIC += (2*(k+1)*(k+2))/(l-k-2)
+        return AIC
 
 
     def run_single(self, data: np.ndarray, t: np.ndarray) -> RunResult:

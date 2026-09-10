@@ -43,7 +43,7 @@ def dataset_path(problem_name: str, n_realizations: int, output_dir: str | Path)
 def results_path(
     problem_name: str, method_name: str, n_realizations: int, output_dir: str | Path
 ) -> Path:
-    return Path(output_dir) / f"{problem_name.upper()}_{method_name.upper()}_{n_realizations}_samples.npz"
+    return Path(output_dir) /  f"{problem_name.upper()}" / f"{problem_name.upper()}_{method_name.upper()}_{n_realizations}_samples.npz"
 
 
 def save_dataset(path: Path, grid: dict[float, dict[float, dict]]) -> None:

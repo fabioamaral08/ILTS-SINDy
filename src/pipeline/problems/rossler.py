@@ -32,7 +32,7 @@ class LorenzProblem(Problem):
         return (0, 100)
 
     def feature_library(self):
-        return ps.PolynomialLibrary(degree=3, include_bias= False)
+        return ps.PolynomialLibrary(degree=3, include_bias= True)
 
     def default_eps(self) -> float:
         return 1e-1

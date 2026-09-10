@@ -24,7 +24,7 @@ class LorenzProblem(Problem):
 
     @property
     def x0(self):
-        return [2.0,0]
+        return [2.0,0.0]
 
     @property
     def t_span(self):
