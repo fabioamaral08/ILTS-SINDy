@@ -63,6 +63,7 @@ class MethodRunner:
         noise_levels: Sequence[float],
         outlier_fractions: Sequence[float],
         n_realizations: int,
+        hyperparams: dict,
         output_dir: str | Path = "coeffs",
         n_jobs: int = -1,
     ) -> Path:
@@ -84,7 +85,7 @@ class MethodRunner:
                 tasks.append((noise_level, outlier_fraction, data))
 
         flat_results = Parallel(n_jobs=n_jobs)(
-            delayed(self.run_single)(data, t) for _, _, data in tasks
+            delayed(self.run_single)(data, t, hyperparams) for _, _, data in tasks
         )
 
         results: dict[float, dict[float, list]] = {nl: {op: [] for op in outlier_fractions} for nl in noise_levels}
