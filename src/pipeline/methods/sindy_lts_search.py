@@ -27,5 +27,5 @@ class SINDyLTSSEARCHMethod(Method):
         eps = hyperparams["threshold"]
         x_dot = ps.FiniteDifference()._differentiate(data, t=t)
         D = np.array(library.fit_transform(data))
-        coeff, trusted_order, ps = lts.SINDy_LTS_search(x_dot, D, p=None, threshold=eps,)
-        return FitResult(coefficients=coeff, extra={"trusted_order": trusted_order, "p": ps})
+        coeff, trusted_order, pvalues = lts.SINDy_LTS_search(x_dot, D, p=None, threshold=eps,)
+        return FitResult(coefficients=coeff, extra={"trusted_order": trusted_order, "p": pvalues})
