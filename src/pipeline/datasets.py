@@ -36,6 +36,19 @@ class DatasetGenerator:
             for outlier_fraction in outlier_fractions:
                 data_list = []
                 index_list = []
+                if noise_level == 0:
+                    if outlier_fraction == 0:
+                        noisy, outlier_mask = add_noise(clean_data, noise_level, outlier_fraction)
+                        data_list.append(noisy)
+                        index_list.append(np.argwhere(outlier_mask))
+                        grid[noise_level][outlier_fraction] = {
+                            "data": np.array(data_list),
+                            "outlier_index": np.array(index_list, dtype=object),
+                        }
+                    else: 
+                        break
+                elif outlier_fraction == 0:
+                    continue
                 for _ in range(n_realizations):
                     noisy, outlier_mask = add_noise(clean_data, noise_level, outlier_fraction)
                     data_list.append(noisy)

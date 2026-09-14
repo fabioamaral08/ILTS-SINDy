@@ -13,13 +13,12 @@ import numpy as np
 from pipeline import io as pipeline_io
 from pipeline.methods import get_method, list_methods
 from pipeline.problems import get_problem, list_problems
-from pipeline.runner import MethodRunner
+from pipeline.inliers_search import MethodRunner
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--problem", required=True, choices=list_problems())
-    parser.add_argument("--method", required=True, choices=list_methods())
     parser.add_argument("--n-realizations", type=int, default=100)
     parser.add_argument(
         "--noise-levels", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
@@ -28,19 +27,20 @@ def main():
         "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
     )
     parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--eps", default=0.1)
     parser.add_argument("-o", "--output-dir", default="coeffs")
     args = parser.parse_args()
 
     problem = get_problem(args.problem)
-    method = get_method(args.method)
     dataset_path = pipeline_io.dataset_path(problem.name, args.n_realizations, args.data_dir)
-
-    runner = MethodRunner(problem, method)
+    hyperparameter = {'threshold': args.eps}
+    runner = MethodRunner(problem)
     path = runner.run_grid(
         dataset_path,
         args.noise_levels,
         args.outlier_fractions,
         args.n_realizations,
+        hyperparams=hyperparameter,
         output_dir=args.output_dir,
     )
     print(f"Saved results to {path}")

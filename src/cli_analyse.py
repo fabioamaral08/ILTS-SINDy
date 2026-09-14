@@ -22,10 +22,10 @@ def main():
     parser.add_argument("--methods", required=True, nargs="+", choices=list_methods())
     parser.add_argument("--n-realizations", type=int, default=100)
     parser.add_argument(
-        "--noise-levels", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9))
+        "--noise-levels", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
     )
     parser.add_argument(
-        "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9))
+        "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
     )
     parser.add_argument(
         "--metrics", nargs="+", default=["accuracy", "exact_recovery", "trajectory_error"]

@@ -33,4 +33,4 @@ def list_methods() -> list[str]:
 
 
 # Import concrete methods so they register themselves.
-from . import sindy, sindy_lts, sr3, esindy, wsindy 
+from . import sindy, sindy_lts, sr3, esindy, wsindy, sindy_lts_search
