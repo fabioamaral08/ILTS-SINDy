@@ -58,7 +58,7 @@ def ilts_search(A,b, p : int|float|None =None, max_it = 100, p_min = 0.8, p_max 
         if not 0 <= p <= 1:
             raise ValueError('A float p must satisfy 0 <= p <= 1')
         p = max(1, int(np.ceil(p * m)))
-    elif not isinstance(p, (int, np.integer)) or not 1 <= p <= m:
+    elif p is not None and (not isinstance(p, (int, np.integer)) or not 1 <= p <= m):
         raise ValueError('p must be an integer in [1, m] or a float in [0, 1]')
 
     # Solve LS
