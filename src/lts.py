@@ -85,7 +85,7 @@ def ilts_search(A,b, p : int|float|None =None, max_it = 100, p_min = 0.8, p_max 
                     xr_best, fr_best, stats_best, I_sorted_best = (xr, fr, stats, I_sorted)
                     p_best = p
                     crit_best = crit
-                Lp = Lpp1
+            Lp = Lpp1
         return xr_best, fr_best, stats_best, I_sorted_best, p_best
     else:
         xr, fr, stats, I_sorted = iter_ilst(p, vr,xr,A ,b, max_it)
