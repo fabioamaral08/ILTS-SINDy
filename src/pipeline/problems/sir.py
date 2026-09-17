@@ -4,7 +4,10 @@ import numpy as np
 import pysindy as ps
 
 from . import register_problem
+from ..sklearn_compat import clonable
 from .base import Problem
+
+_ClonableCustomLibrary = clonable(ps.CustomLibrary)
 
 
 @register_problem
@@ -40,7 +43,7 @@ class SIRProblem(Problem):
             lambda x: f"{x}",
             lambda x, y: f"{x}{y}",
         ]
-        return ps.CustomLibrary(library_functions=functions, function_names=function_names)
+        return _ClonableCustomLibrary(library_functions=functions, function_names=function_names)
 
     def true_coefficients(self, library) -> np.ndarray:
         library.fit_transform(np.array([self.x0, self.x0]))
