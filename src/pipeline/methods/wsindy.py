@@ -29,7 +29,7 @@ class WeakSINDyMethod(Method):
         dt = t[1] - t[0]
         t_train = np.arange(data.shape[0]) * dt
         weak_lib = ps.WeakPDELibrary(
-            function_library=library, spatiotemporal_grid=t_train, is_uniform=True, K=K
+            function_library=library, spatiotemporal_grid=t_train, K=K
         )
         opt = ps.STLSQ(threshold=threshold)
         model = ps.SINDy(optimizer=opt, feature_library=weak_lib)
@@ -41,11 +41,11 @@ class WeakSINDyMethod(Method):
         param_grid = {
             "optimizer__threshold": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
             "optimizer__alpha": [0, 0.01, 0.05, 0.1],                  # Ridge penalty on STLSQ
-            "feature_library__K": [50, 100, 200],                        # Number of ensemble models
-            "feature_library__p": [2, 4, 8],                        # Number of ensemble models
+            "feature_library__K": [50, 100, 200],                        # number of test functions
+            "feature_library__p": [2, 4, 8],                        # test function degree
         }
         weak_lib = ps.WeakPDELibrary(
-                    function_library=library, spatiotemporal_grid=t, is_uniform=True
+                    function_library=library, spatiotemporal_grid=t
                 )
         model = ps.SINDy(optimizer=ps.STLSQ(),  feature_library=weak_lib)
 
