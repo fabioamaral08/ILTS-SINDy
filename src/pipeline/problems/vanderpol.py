@@ -20,11 +20,11 @@ class LorenzProblem(Problem):
 
     @property
     def true_params(self):
-        return (4.0,)
+        return (2.0,)
 
     @property
     def x0(self):
-        return [0.0,1.0]
+        return [2.0,0.0]
 
     @property
     def t_span(self):
