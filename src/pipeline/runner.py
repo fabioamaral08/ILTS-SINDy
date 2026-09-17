@@ -22,8 +22,6 @@ from .problems.base import Problem
 @dataclass
 class RunResult:
     coefficients: np.ndarray
-    hyperparams: dict
-    trajectory_error: float
     extra: dict = field(default_factory=dict)
 
 
@@ -33,36 +31,14 @@ class MethodRunner:
         self.method = method
         self.library = library if library is not None else problem.feature_library()
 
-    def _score(self, coefficients: np.ndarray, data: np.ndarray, t: np.ndarray) -> float:
-    
-        ## Compute the Akaike information criterion (AIC)
-        D = self.library.fit_transform(data)
-        data_dot = ps.FiniteDifference()._differentiate(data, t=t)
-        RSS = metrics.derivative_error(data_dot, coefficients, D)
-        l = data.shape[0]
-        k = np.count_nonzero(coefficients)
-        AIC = l * np.log(RSS/l) + 2*k
-        AIC += (2*k*(k+1))/(l-k-1)
-        return AIC
 
-
-    def run_single(self, data: np.ndarray, t: np.ndarray) -> RunResult:
-        grid = self.method.hyperparameter_grid()
-        names = list(grid)
-        best: RunResult | None = None
-        for values in itertools.product(*(grid[name] for name in names)):
-            hyperparams = dict(zip(names, values))
-            fit_result = self.method.fit(data, t, self.library, **hyperparams)
-            score = self._score(fit_result.coefficients, data, t)
-            if best is None or score < best.trajectory_error:
-                best = RunResult(
+    def run_single(self, data: np.ndarray, t: np.ndarray, eps: float = 0.1) -> RunResult:
+        fit_result = self.method.fit(data, t, self.library,threshhold = eps)
+        result = RunResult(
                     coefficients=fit_result.coefficients,
-                    hyperparams=hyperparams,
-                    trajectory_error=score,
                     extra=fit_result.extra,
                 )
-        assert best is not None
-        return best
+        return result
 
     def run_grid(
         self,
@@ -71,6 +47,7 @@ class MethodRunner:
         outlier_fractions: Sequence[float],
         n_realizations: int,
         output_dir: str | Path = "coeffs",
+        eps: float = 0.1,
         n_jobs: int = -1,
     ) -> Path:
         dataset = np.load(dataset_path, allow_pickle=True)
@@ -91,7 +68,7 @@ class MethodRunner:
                 tasks.append((noise_level, outlier_fraction, data))
 
         flat_results = Parallel(n_jobs=n_jobs)(
-            delayed(self.run_single)(data, t) for _, _, data in tasks
+            delayed(self.run_single)(data, t, eps) for _, _, data in tasks
         )
 
         results: dict[float, dict[float, list]] = {nl: {op: [] for op in outlier_fractions} for nl in noise_levels}

@@ -23,9 +23,8 @@ class SINDyLTSSEARCHMethod(Method):
     def default_hyperparams(self, problem: Problem) -> dict:
         return {"threshold": problem.default_eps()}
 
-    def fit(self, data: np.ndarray, t: np.ndarray, library, **hyperparams) -> FitResult:
-        eps = hyperparams["threshold"]
+    def fit(self, data: np.ndarray, t: np.ndarray, library, threshold, **hyperparams) -> FitResult:
         x_dot = ps.FiniteDifference()._differentiate(data, t=t)
         D = np.array(library.fit_transform(data))
-        coeff, trusted_order, pvalues = lts.SINDy_LTS_search(x_dot, D, p=None, threshold=eps,)
+        coeff, trusted_order, pvalues = lts.SINDy_LTS_search(x_dot, D, p=None, threshold=threshold,)
         return FitResult(coefficients=coeff, extra={"trusted_order": trusted_order, "p": pvalues})

@@ -80,12 +80,6 @@ def save_run_results(path: Path, grid: dict[float, dict[float, list]]) -> None:
             result_dct[_coeffs_key(outlier_percent)] = np.array(
                 [r.coefficients for r in run_results]
             )
-            result_dct[_hyperparams_key(outlier_percent)] = np.array(
-                [r.hyperparams for r in run_results], dtype=object
-            )
-            result_dct[_trajectory_error_key(outlier_percent)] = np.array(
-                [r.trajectory_error for r in run_results]
-            )
             result_dct[_extra_key(outlier_percent)] = np.array(
                 [r.extra for r in run_results], dtype=object
             )

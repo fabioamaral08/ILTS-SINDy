@@ -22,30 +22,10 @@ class SR3Method(Method):
     def default_hyperparams(self, problem: Problem) -> dict:
         return {"trimming_fraction": 0.1}
 
-    def fit(self, data: np.ndarray, t: np.ndarray, library, **hyperparams) -> FitResult:
+    def fit(self, data: np.ndarray, t: np.ndarray, library, threshold, **hyperparams) -> FitResult:
         trimming_fraction = hyperparams["trimming_fraction"]
         dt = t[1] - t[0]
         opt = ps.SR3(trimming_fraction=trimming_fraction)
         model = ps.SINDy(optimizer=opt, feature_library=library)
         model.fit(data, dt)
         return FitResult(coefficients=model.coefficients().T)
-
-    def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
-        param_grid = {
-            "optimizer__reg_weight_lam": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
-            "optimizer__relax_coeff_nu": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
-            "optimizer__trimming_fraction": [x for x in np.linspace(0,0.3,7)],  # Base sparsity threshold
-        }
-        opt = ps.SR3()
-        model = ps.SINDy(optimizer=opt, feature_library=library)
-
-        search = GridSearchCV(
-            estimator=model, 
-            param_grid=param_grid, 
-            cv=5, 
-            scoring=scorer,
-            n_jobs=-1 # Uses all available CPU cores for speed
-        )
-
-        search.fit(data, t=t)
-        return search

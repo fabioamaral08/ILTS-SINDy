@@ -19,6 +19,7 @@ from pipeline.runner import MethodRunner
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--problem", required=True, choices=list_problems())
+    parser.add_argument("--threshold", required=True, type=float)
     parser.add_argument("--method", required=True, choices=list_methods())
     parser.add_argument("--n-realizations", type=int, default=100)
     parser.add_argument(
@@ -42,6 +43,7 @@ def main():
         args.outlier_fractions,
         args.n_realizations,
         output_dir=args.output_dir,
+        eps=args.threshold
     )
     print(f"Saved results to {path}")
 
