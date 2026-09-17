@@ -13,11 +13,46 @@ class _ClonableWeakPDELibrary(ps.WeakPDELibrary):
     """Workaround for a pysindy 2.1.0 bug: WeakPDELibrary.__init__ accepts
     is_uniform/periodic but never assigns them as instance attributes, which
     breaks sklearn's get_params()/clone() (needed by GridSearchCV) even when
-    they're left at their defaults.
+    they're left at their defaults. sklearn also requires __init__ to spell
+    out every parameter (no *args/**kwargs), so this mirrors the parent
+    class's full signature instead of passing through varargs.
     """
 
-    def __init__(self, *args, is_uniform=None, periodic=None, **kwargs):
-        super().__init__(*args, is_uniform=is_uniform, periodic=periodic, **kwargs)
+    def __init__(
+        self,
+        function_library=None,
+        derivative_order=0,
+        spatiotemporal_grid=None,
+        include_bias=False,
+        include_interaction=True,
+        K=100,
+        H_xt=None,
+        p=4,
+        num_pts_per_domain=None,
+        implicit_terms=False,
+        multiindices=None,
+        differentiation_method=ps.FiniteDifference,
+        diff_kwargs=None,
+        is_uniform=None,
+        periodic=None,
+    ):
+        super().__init__(
+            function_library=function_library,
+            derivative_order=derivative_order,
+            spatiotemporal_grid=spatiotemporal_grid,
+            include_bias=include_bias,
+            include_interaction=include_interaction,
+            K=K,
+            H_xt=H_xt,
+            p=p,
+            num_pts_per_domain=num_pts_per_domain,
+            implicit_terms=implicit_terms,
+            multiindices=multiindices,
+            differentiation_method=differentiation_method,
+            diff_kwargs=diff_kwargs if diff_kwargs is not None else {},
+            is_uniform=is_uniform,
+            periodic=periodic,
+        )
         self.is_uniform = is_uniform
         self.periodic = periodic
 
