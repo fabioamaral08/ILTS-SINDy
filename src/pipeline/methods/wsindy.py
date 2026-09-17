@@ -42,7 +42,7 @@ class WeakSINDyMethod(Method):
             "optimizer__threshold": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
             "optimizer__alpha": [0, 0.01, 0.05, 0.1],                  # Ridge penalty on STLSQ
             "feature_library__K": [50, 100, 200],                        # Number of ensemble models
-            "p": [2, 4, 8],                        # Number of ensemble models
+            "feature_library__p": [2, 4, 8],                        # Number of ensemble models
         }
         weak_lib = ps.WeakPDELibrary(
                     function_library=library, spatiotemporal_grid=t, is_uniform=True
