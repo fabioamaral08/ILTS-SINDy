@@ -32,8 +32,10 @@ class MethodRunner:
         self.library = library if library is not None else problem.feature_library()
 
 
-    def run_single(self, data: np.ndarray, t: np.ndarray, eps: float = 0.1) -> RunResult:
-        fit_result = self.method.fit(data, t, self.library,threshhold = eps)
+    def run_single(self, data: np.ndarray, t: np.ndarray, eps: float = 0.1,p: int | float = 0.8, **hyperparams) -> RunResult:
+        hyperparams['p'] = p
+        hyperparams["trimming_fraction"] = data.shape[0]/float(p)
+        fit_result = self.method.fit(data, t, self.library,threshold = eps, **hyperparams)
         result = RunResult(
                     coefficients=fit_result.coefficients,
                     extra=fit_result.extra,
@@ -61,18 +63,20 @@ class MethodRunner:
         cells: list[tuple[float, float]] = [
             (nl, op) for nl in noise_levels for op in outlier_fractions
         ]
-        tasks: list[tuple[float, float, np.ndarray]] = []
+        tasks: list[tuple[float, float, np.ndarray, int]] = []
         for noise_level, outlier_fraction in cells:
             data_realizations, _ = io.load_dataset_cell(dataset, noise_level, outlier_fraction)
+            m = data_realizations[0].shape[0]
+            p = int(m - (3*outlier_fraction*m))
             for data in data_realizations:
-                tasks.append((noise_level, outlier_fraction, data))
+                tasks.append((noise_level, outlier_fraction, data, p))
 
         flat_results = Parallel(n_jobs=n_jobs)(
-            delayed(self.run_single)(data, t, eps) for _, _, data in tasks
+            delayed(self.run_single)(data, t, eps, p) for _, _, data, p in tasks
         )
 
         results: dict[float, dict[float, list]] = {nl: {op: [] for op in outlier_fractions} for nl in noise_levels}
-        for (noise_level, outlier_fraction, _), run_result in zip(tasks, flat_results):
+        for (noise_level, outlier_fraction, _, _), run_result in zip(tasks, flat_results):
             results[noise_level][outlier_fraction].append(run_result)
 
         output_dir = Path(output_dir)

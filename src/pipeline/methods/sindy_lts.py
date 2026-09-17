@@ -25,9 +25,8 @@ class SINDyLTSMethod(Method):
         return {"threshold": problem.default_eps(), "p_fraction": 0.90}
 
     def fit(self, data: np.ndarray, t: np.ndarray, library, threshold, **hyperparams) -> FitResult:
-        p_fraction = hyperparams["p_fraction"]
+        p = hyperparams["p"]
         x_dot = ps.FiniteDifference()._differentiate(data, t=t)
         D = np.array(library.fit_transform(data))
-        p = max(1, int(round(p_fraction * data.shape[0])))
         coeff, trusted_order = lts.SINDy_LTS(x_dot, D, p=p, threshold=threshold)
         return FitResult(coefficients=coeff, extra={"trusted_order": trusted_order, "p": p})
