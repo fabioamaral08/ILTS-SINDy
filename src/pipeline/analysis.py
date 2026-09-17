@@ -139,7 +139,7 @@ def plot_metric_grid(
             ax = sb.heatmap(
                 grid,
                 annot=annot_labels,
-                fmt=".2f",
+                fmt="",
                 annot_kws={"fontsize": annot_fontsize},
                 cmap="magma",
                 vmin=0,
