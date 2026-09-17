@@ -172,7 +172,14 @@ def plot_metric_grid(
                 ax.set_title(method_name, fontsize=title_fontsize)
 
     fig.suptitle(_METRIC_LABELS.get(metric, metric), fontsize=suptitle_fontsize)
-    fig.tight_layout()
+
+    # Reserve top margin for the suptitle proportional to its actual size
+    # (in inches, plus padding) so it doesn't collide with the top row's
+    # per-subplot titles as suptitle_fontsize scales with the grid.
+    fig_height = 4 * n_rows
+    top_margin = (suptitle_fontsize / 72) * 2.5
+    top = max(0.80, 1 - top_margin / fig_height)
+    fig.tight_layout(rect=(0, 0, 1, top))
 
     if output_path is not None:
         output_path = Path(output_path)
