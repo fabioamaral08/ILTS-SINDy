@@ -30,7 +30,7 @@ class SR3Method(Method):
         model.fit(data, dt)
         return FitResult(coefficients=model.coefficients().T)
 
-     def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
+    def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
         param_grid = {
             "optimizer__reg_weight_lam": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
             "optimizer__relax_coeff_nu": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold

@@ -33,7 +33,7 @@ class EnsembleSINDyMethod(Method):
         return FitResult(coefficients=model.coefficients().T)
 
 
-    def def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
+    def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
         opt = ps.EnsembleOptimizer(opt=ps.STLSQ(), bagging=True)
         param_grid = {
             "optimizer__opt__threshold": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
