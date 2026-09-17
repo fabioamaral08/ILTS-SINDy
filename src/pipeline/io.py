@@ -35,6 +35,9 @@ def _trajectory_error_key(outlier_percent: float) -> str:
 def _extra_key(outlier_percent: float) -> str:
     return f"extra_{outlier_percent * 100:g}"
 
+def _time_key(outlier_percent: float) -> str:
+    return f"time_{outlier_percent * 100:g}"
+
 
 def dataset_path(problem_name: str, n_realizations: int, output_dir: str | Path) -> Path:
     return Path(output_dir) / f"{problem_name.upper()}_{n_realizations}_data.npz"
@@ -83,6 +86,9 @@ def save_run_results(path: Path, grid: dict[float, dict[float, list]]) -> None:
             result_dct[_extra_key(outlier_percent)] = np.array(
                 [r.extra for r in run_results], dtype=object
             )
+            result_dct[_time_key(outlier_percent)] = np.array(
+                [r.time for r in run_results], dtype=object
+            )
         save_dct[_noise_key(noise_level)] = result_dct
     np.savez(path, allow_pickle=True, **save_dct)
 
@@ -95,7 +101,6 @@ def load_run_cell(
     op = outlier_percent
     return {
         "coefficients": cell[_coeffs_key(op)],
-        "hyperparams": cell[_hyperparams_key(op)],
-        "trajectory_error": cell[_trajectory_error_key(op)],
+        "time": cell[_time_key(op)],
         "extra": cell[_extra_key(op)],
     }

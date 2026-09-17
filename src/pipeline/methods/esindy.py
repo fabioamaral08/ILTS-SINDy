@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pysindy as ps
 
@@ -25,5 +27,7 @@ class EnsembleSINDyMethod(Method):
         dt = t[1] - t[0]
         opt = ps.EnsembleOptimizer(opt=ps.STLSQ(threshold=threshold), bagging=True)
         model = ps.SINDy(optimizer=opt, feature_library=library)
+        start = time.perf_counter()
         model.fit(data, dt)
-        return FitResult(coefficients=model.coefficients().T)
+        elapsed = time.perf_counter() - start
+        return FitResult(coefficients=model.coefficients().T, time=elapsed)

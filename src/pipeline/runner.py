@@ -22,6 +22,7 @@ from .problems.base import Problem
 @dataclass
 class RunResult:
     coefficients: np.ndarray
+    time: float
     extra: dict = field(default_factory=dict)
 
 
@@ -34,11 +35,12 @@ class MethodRunner:
 
     def run_single(self, data: np.ndarray, t: np.ndarray, eps: float = 0.1,p: int | float = 0.8, **hyperparams) -> RunResult:
         hyperparams['p'] = p
-        hyperparams["trimming_fraction"] = data.shape[0]/float(p)
+        hyperparams["trimming_fraction"] = 1.0 - float(data.shape[0])/float(p)
         fit_result = self.method.fit(data, t, self.library,threshold = eps, **hyperparams)
         result = RunResult(
                     coefficients=fit_result.coefficients,
                     extra=fit_result.extra,
+                    time=fit_result.time,
                 )
         return result
 

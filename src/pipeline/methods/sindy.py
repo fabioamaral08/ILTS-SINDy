@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pysindy as ps
 
@@ -27,5 +29,7 @@ class SINDyMethod(Method):
     def fit(self, data: np.ndarray, t: np.ndarray, library, threshold, **hyperparams) -> FitResult:
         x_dot = ps.FiniteDifference()._differentiate(data, t=t)
         D = np.array(library.fit_transform(data))
+        start = time.perf_counter()
         coeff = lts.SINDy(x_dot, D, threshold=threshold)
-        return FitResult(coefficients=coeff)
+        elapsed = time.perf_counter() - start
+        return FitResult(coefficients=coeff, time=elapsed)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pysindy as ps
 
@@ -28,5 +30,7 @@ class SINDyLTSMethod(Method):
         p = hyperparams["p"]
         x_dot = ps.FiniteDifference()._differentiate(data, t=t)
         D = np.array(library.fit_transform(data))
+        start = time.perf_counter()
         coeff, trusted_order = lts.SINDy_LTS(x_dot, D, p=p, threshold=threshold)
-        return FitResult(coefficients=coeff, extra={"trusted_order": trusted_order, "p": p})
+        elapsed = time.perf_counter() - start
+        return FitResult(coefficients=coeff, time=elapsed, extra={"trusted_order": trusted_order, "p": p})

@@ -19,8 +19,8 @@ from ..problems.base import Problem
 @dataclass
 class FitResult:
     coefficients: np.ndarray
+    time: float
     extra: dict = field(default_factory=dict)
-
 
 class Method(ABC):
     name: str

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pysindy as ps
 
@@ -27,5 +29,7 @@ class SR3Method(Method):
         dt = t[1] - t[0]
         opt = ps.SR3(trimming_fraction=trimming_fraction)
         model = ps.SINDy(optimizer=opt, feature_library=library)
+        start = time.perf_counter()
         model.fit(data, dt)
-        return FitResult(coefficients=model.coefficients().T)
+        elapsed = time.perf_counter() - start
+        return FitResult(coefficients=model.coefficients().T, time=elapsed)

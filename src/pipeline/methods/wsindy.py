@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pysindy as ps
 
@@ -32,5 +34,7 @@ class WeakSINDyMethod(Method):
         )
         opt = ps.STLSQ(threshold=threshold)
         model = ps.SINDy(optimizer=opt, feature_library=weak_lib)
+        start = time.perf_counter()
         model.fit(data, dt)
-        return FitResult(coefficients=model.coefficients().T)
+        elapsed = time.perf_counter() - start
+        return FitResult(coefficients=model.coefficients().T, time=elapsed)
