@@ -7,6 +7,8 @@ from ..problems.base import Problem
 from . import register_method
 from .base import FitResult, Method
 
+from sklearn.model_selection import GridSearchCV
+
 
 @register_method
 class SR3Method(Method):
@@ -27,3 +29,23 @@ class SR3Method(Method):
         model = ps.SINDy(optimizer=opt, feature_library=library)
         model.fit(data, dt)
         return FitResult(coefficients=model.coefficients().T)
+
+    def grid_fit(self, data, t, library):
+        param_grid = {
+            "optimizer__reg_weight_lam": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
+            "optimizer__relax_coeff_nu": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
+            "optimizer__trimming_fraction": [x for x in np.linspace(0,0.3,7)],  # Base sparsity threshold
+        }
+        opt = ps.SR3()
+        model = ps.SINDy(optimizer=opt, feature_library=library)
+
+        search = GridSearchCV(
+            estimator=model, 
+            param_grid=param_grid, 
+            cv=5, 
+            scoring='neg_mean_squared_error',
+            n_jobs=-1 # Uses all available CPU cores for speed
+        )
+
+        search.fit(data, t=t)
+        return search

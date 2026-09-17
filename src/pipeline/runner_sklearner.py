@@ -26,6 +26,36 @@ class RunResult:
     trajectory_error: float
     extra: dict = field(default_factory=dict)
 
+def sindy_aic_scorer(estimator, X, y=None):
+    """
+    Custom scorer to calculate -AIC for a PySINDy model.
+    Returns negative AIC so GridSearchCV maximizes it (which minimizes AIC).
+    """
+    # 1. Calculate k: number of non-zero parameters in the SINDy model
+    # For E-SINDy, this evaluates the aggregated ensemble coefficients
+    k = np.count_nonzero(estimator.coefficients())
+    
+    # 2. Get predictions (x_dot_pred)
+    x_dot_pred = estimator.predict(X)
+    
+    # 3. Get true derivatives (x_dot_true)
+    if y is not None:
+        x_dot_true = y
+    else:
+        # If true derivatives aren't passed, use SINDy's internal differentiator
+        x_dot_true = estimator.differentiate(X)
+        
+    # 4. Calculate Residual Sum of Squares (RSS)
+    rss = np.sum((x_dot_true - x_dot_pred) ** 2)
+    
+    # 5. Calculate n (number of samples)
+    n = X.shape[0]
+    
+    # 6. Compute AIC (adding a tiny epsilon to avoid log(0) if RSS is exactly 0)
+    eps = np.finfo(float).eps
+    aic = n * np.log((rss / n) + eps) + 2 * k
+    
+    return -aic
 
 class MethodRunner:
     def __init__(self, problem: Problem, method: Method, library=None):
@@ -33,35 +63,15 @@ class MethodRunner:
         self.method = method
         self.library = library if library is not None else problem.feature_library()
 
-    def _score(self, coefficients: np.ndarray, data: np.ndarray, t: np.ndarray) -> float:
-    
-        ## Compute the Akaike information criterion (AIC)
-        D = self.library.fit_transform(data)
-        data_dot = ps.FiniteDifference()._differentiate(data, t=t)
-        RSS = metrics.derivative_error(data_dot, coefficients, D)
-        l = data.shape[0]
-        k = np.count_nonzero(coefficients)
-        AIC = l * np.log(RSS/l) + 2*k
-        AIC += (2*k*(k+1))/(l-k-1)
-        return AIC
-
 
     def run_single(self, data: np.ndarray, t: np.ndarray) -> RunResult:
-        grid = self.method.hyperparameter_grid()
-        names = list(grid)
-        best: RunResult | None = None
-        for values in itertools.product(*(grid[name] for name in names)):
-            hyperparams = dict(zip(names, values))
-            fit_result = self.method.fit(data, t, self.library, **hyperparams)
-            score = self._score(fit_result.coefficients, data, t)
-            if best is None or score < best.trajectory_error:
-                best = RunResult(
-                    coefficients=fit_result.coefficients,
-                    hyperparams=hyperparams,
-                    trajectory_error=score,
-                    extra=fit_result.extra,
-                )
-        assert best is not None
+        fit_result = self.method.grid_fit(data, t, self.library, scorer= sindy_aic_scorer)
+        best = RunResult(
+                            coefficients=fit_result.best_estimator_.coefficients().T,
+                            hyperparams=fit_result.best_params_,
+                            trajectory_error=fit_result.best_score_,
+                            extra=field(default_factory=dict),
+                        )
         return best
 
     def run_grid(

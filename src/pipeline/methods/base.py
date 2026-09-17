@@ -8,10 +8,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 
 from ..problems.base import Problem
+
+from sklearn.model_selection import GridSearchCV
 
 
 @dataclass
@@ -26,6 +29,18 @@ class Method(ABC):
 
     @abstractmethod
     def fit(self, data: np.ndarray, t: np.ndarray, library, **hyperparams) -> FitResult:
+        """Fit the model to `data` (n_samples, n_states) sampled at times `t`
+        using the given feature `library`, returning coefficients with shape
+        (n_features, n_states)."""
+
+    @abstractmethod
+    def grid_fit(
+        self,
+        data,
+        t,
+        library,
+        scorer: str | Callable | list | tuple | dict = "neg_mean_squared_error",
+    ) -> GridSearchCV:
         """Fit the model to `data` (n_samples, n_states) sampled at times `t`
         using the given feature `library`, returning coefficients with shape
         (n_features, n_states)."""

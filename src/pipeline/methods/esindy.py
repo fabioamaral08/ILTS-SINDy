@@ -6,7 +6,7 @@ import pysindy as ps
 from ..problems.base import Problem
 from . import register_method
 from .base import FitResult, Method
-
+from sklearn.model_selection import GridSearchCV
 
 @register_method
 class EnsembleSINDyMethod(Method):
@@ -16,7 +16,7 @@ class EnsembleSINDyMethod(Method):
 
     def hyperparameter_grid(self) -> dict[str, list]:
         return {
-                "threshold": [x for x in np.logspace(1, -5, 10)],
+                "threshold": [x for x in np.logspace(0,-5,6)],
                 "n_models": [x for x in (10, 20, 50, 100)]
                 }
 
@@ -31,3 +31,24 @@ class EnsembleSINDyMethod(Method):
         model = ps.SINDy(optimizer=opt, feature_library=library)
         model.fit(data, dt)
         return FitResult(coefficients=model.coefficients().T)
+
+
+    def grid_fit(self, data, t, library):
+        opt = ps.EnsembleOptimizer(opt=ps.STLSQ(), bagging=True)
+        param_grid = {
+            "optimizer__opt__threshold": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
+            "optimizer__opt__alpha": [0, 0.01, 0.05, 0.1],             # Ridge penalty on STLSQ
+            "optimizer__n_models": [20, 50, 100],                        # Number of ensemble models
+        }
+        model = ps.SINDy(optimizer=opt,  feature_library=library)
+
+        search = GridSearchCV(
+            estimator=model, 
+            param_grid=param_grid, 
+            cv=5, 
+            scoring='neg_mean_squared_error',
+            n_jobs=-1 # Uses all available CPU cores for speed
+        )
+
+        search.fit(data, t=t)
+        return search

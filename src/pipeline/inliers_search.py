@@ -34,16 +34,11 @@ class MethodRunner:
         self.library = library if library is not None else problem.feature_library()
 
     def _score(self, coefficients: np.ndarray, data: np.ndarray, t: np.ndarray) -> float:
-    
-        ## Compute the Akaike information criterion (AIC)
-        D = self.library.fit_transform(data)
-        data_dot = ps.FiniteDifference()._differentiate(data, t=t)
-        RSS = metrics.derivative_error(data_dot, coefficients, D)
-        l = data.shape[0]
-        k = np.count_nonzero(coefficients)
-        AIC = l * np.log(RSS/l) + 2*k
-        AIC += (2*(k+1)*(k+2))/(l-k-2)
-        return AIC
+        x0 = data[0]
+        t_eval = np.linspace(*self.problem.t_span, data.shape[0])
+        sim = lts.simulate(coefficients, self.library, x0, self.problem.t_span, t_eval)
+        err = metrics.trajectory_error(data, sim)
+        return err
 
 
     def run_single(self, data: np.ndarray, t: np.ndarray, hyperparams) -> RunResult:

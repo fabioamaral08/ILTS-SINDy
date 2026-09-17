@@ -17,7 +17,7 @@ class SINDyLTSMethod(Method):
 
     def hyperparameter_grid(self) -> dict[str, list]:
         return {
-            "threshold": [x for x in np.logspace(1, -5, 10)],
+            "threshold": [x for x in np.logspace(0,-5,6)],
             "p_fraction": [0.80, 0.85, 0.90, 0.95, 0.99],
         }
 

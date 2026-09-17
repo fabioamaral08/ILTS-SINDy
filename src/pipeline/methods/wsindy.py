@@ -6,7 +6,7 @@ import pysindy as ps
 from ..problems.base import Problem
 from . import register_method
 from .base import FitResult, Method
-
+from sklearn.model_selection import GridSearchCV
 
 @register_method
 class WeakSINDyMethod(Method):
@@ -16,7 +16,7 @@ class WeakSINDyMethod(Method):
 
     def hyperparameter_grid(self) -> dict[str, list]:
         return {
-            "threshold": [x for x in np.logspace(1, -5, 10)],
+            "threshold": [x for x in np.logspace(0,-5,6)],
             "K": [50, 100, 200],
         }
 
@@ -35,3 +35,27 @@ class WeakSINDyMethod(Method):
         model = ps.SINDy(optimizer=opt, feature_library=weak_lib)
         model.fit(data, dt)
         return FitResult(coefficients=model.coefficients().T)
+
+
+    def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
+        param_grid = {
+            "optimizer__threshold": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
+            "optimizer__alpha": [0, 0.01, 0.05, 0.1],                  # Ridge penalty on STLSQ
+            "feature_library__K": [50, 100, 200],                        # Number of ensemble models
+            "p": [2, 4, 8],                        # Number of ensemble models
+        }
+        weak_lib = ps.WeakPDELibrary(
+                    function_library=library, spatiotemporal_grid=t, is_uniform=True
+                )
+        model = ps.SINDy(optimizer=ps.STLSQ(),  feature_library=weak_lib)
+
+        search = GridSearchCV(
+            estimator=model, 
+            param_grid=param_grid, 
+            cv=5, 
+            scoring= scorer,
+            n_jobs=-1 # Uses all available CPU cores for speed
+        )
+
+        search.fit(data, t=t)
+        return search

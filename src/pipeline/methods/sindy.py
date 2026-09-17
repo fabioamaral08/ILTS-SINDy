@@ -15,6 +15,12 @@ class SINDyMethod(Method):
 
     name = "SINDY"
 
+    def hyperparameter_grid(self) -> dict[str, list]:
+        return {
+            "threshold": [x for x in np.logspace(0,-5,6)],
+        }
+
+
     def default_hyperparams(self, problem: Problem) -> dict:
         return {"threshold": problem.default_eps()}
 
