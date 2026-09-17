@@ -102,8 +102,9 @@ def plot_metric_grid(
         len(methods),
         figsize=(5 * len(methods), 4 * len(problems)),
         squeeze=False,
+        sharex="col",
+        sharey="row",
     )
-    im = None
     for i, problem_name in enumerate(problems):
         for j, method_name in enumerate(methods):
             ax = axes[i][j]
@@ -112,25 +113,33 @@ def plot_metric_grid(
                 ax.axis("off")
                 continue
             grid = rs.metric_grid(metric)
-            ax = sb.heatmap(grid, annot=True, cmap= "magma", vmin=0, vmax=vmax, ax=ax)
-            ax.invert_yaxis()
-            
-            ax.set_xticklabels(
-                [f"{v * 100:g}%" for v in rs.outlier_fractions], rotation=45, ha="right"
+            is_last_column = j == len(methods) - 1
+            ax = sb.heatmap(
+                grid,
+                annot=True,
+                fmt=".2f",
+                cmap="magma",
+                vmin=0,
+                vmax=vmax,
+                ax=ax,
+                cbar=is_last_column,
+                cbar_kws={"label": _METRIC_LABELS.get(metric, metric)} if is_last_column else None,
             )
-            
-            ax.set_yticklabels([f"{v * 100:g}%" for v in rs.noise_levels])
+            ax.invert_yaxis()
+
             if i == len(problems) - 1:
+                ax.set_xticklabels(
+                    [f"{v * 100:g}%" for v in rs.outlier_fractions], rotation=45, ha="right"
+                )
                 ax.set_xlabel("Outlier percentage")
             if j == 0:
+                ax.set_yticklabels([f"{v * 100:g}%" for v in rs.noise_levels])
                 ax.set_ylabel(f"{problem_name}\nNoise level")
             if i == 0:
                 ax.set_title(method_name)
 
     fig.suptitle(_METRIC_LABELS.get(metric, metric))
     fig.tight_layout()
-    if im is not None:
-        fig.colorbar(im, ax=axes.ravel().tolist(), label=_METRIC_LABELS.get(metric, metric))
 
     if output_path is not None:
         output_path = Path(output_path)
