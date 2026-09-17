@@ -112,13 +112,13 @@ def plot_metric_grid(
                 ax.axis("off")
                 continue
             grid = rs.metric_grid(metric)
-            # im = ax.imshow(grid, origin="lower", cmap="magma", vmin=0, vmax=vmax, aspect="auto")
-            sb.heatmap(grid, annot=True, cmap= "magma", vmin=0, vmax=vmax, ax=ax)
-            ax.set_xticks(range(len(rs.outlier_fractions)))
+            ax = sb.heatmap(grid, annot=True, cmap= "magma", vmin=0, vmax=vmax, ax=ax)
+            ax.invert_yaxis()
+            
             ax.set_xticklabels(
                 [f"{v * 100:g}%" for v in rs.outlier_fractions], rotation=45, ha="right"
             )
-            ax.set_yticks(range(len(rs.noise_levels)))
+            
             ax.set_yticklabels([f"{v * 100:g}%" for v in rs.noise_levels])
             if i == len(problems) - 1:
                 ax.set_xlabel("Outlier percentage")

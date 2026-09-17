@@ -28,7 +28,7 @@ def main():
         "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
     )
     parser.add_argument(
-        "--metrics", nargs="+", default=["accuracy", "exact_recovery", "trajectory_error"]
+        "--metrics", nargs="+", default=["accuracy", "exact_recovery"]
     )
     parser.add_argument("--data-dir", default="data")
     parser.add_argument("--coeffs-dir", default="coeffs")
