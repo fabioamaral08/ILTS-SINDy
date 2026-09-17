@@ -30,7 +30,7 @@ class SR3Method(Method):
         model.fit(data, dt)
         return FitResult(coefficients=model.coefficients().T)
 
-    def grid_fit(self, data, t, library):
+     def grid_fit(self, data, t, library, scorer = 'neg_mean_squared_error'):
         param_grid = {
             "optimizer__reg_weight_lam": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
             "optimizer__relax_coeff_nu": [x for x in np.logspace(0,-5,6)],  # Base sparsity threshold
@@ -43,7 +43,7 @@ class SR3Method(Method):
             estimator=model, 
             param_grid=param_grid, 
             cv=5, 
-            scoring='neg_mean_squared_error',
+            scoring=scorer,
             n_jobs=-1 # Uses all available CPU cores for speed
         )
 
