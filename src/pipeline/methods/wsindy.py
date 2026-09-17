@@ -10,12 +10,14 @@ from sklearn.model_selection import GridSearchCV
 
 
 class _ClonableWeakPDELibrary(ps.WeakPDELibrary):
-    """Workaround for a pysindy 2.1.0 bug: WeakPDELibrary.__init__ accepts
-    is_uniform/periodic but never assigns them as instance attributes, which
-    breaks sklearn's get_params()/clone() (needed by GridSearchCV) even when
-    they're left at their defaults. sklearn also requires __init__ to spell
-    out every parameter (no *args/**kwargs), so this mirrors the parent
-    class's full signature instead of passing through varargs.
+    """Workaround for a pysindy 2.1.0 bug: WeakPDELibrary.__init__ doesn't
+    assign several of its own constructor params (is_uniform, periodic,
+    num_pts_per_domain, ...) as instance attributes, which breaks sklearn's
+    get_params()/clone() (needed by GridSearchCV) even when they're left at
+    their defaults. sklearn also requires __init__ to spell out every
+    parameter (no *args/**kwargs), so this mirrors the parent class's full
+    signature instead of passing through varargs, and re-assigns every
+    param as self.<name> after construction so none of them are missing.
     """
 
     def __init__(
@@ -53,6 +55,19 @@ class _ClonableWeakPDELibrary(ps.WeakPDELibrary):
             is_uniform=is_uniform,
             periodic=periodic,
         )
+        self.function_library = function_library
+        self.derivative_order = derivative_order
+        self.spatiotemporal_grid = spatiotemporal_grid
+        self.include_bias = include_bias
+        self.include_interaction = include_interaction
+        self.K = K
+        self.H_xt = H_xt
+        self.p = p
+        self.num_pts_per_domain = num_pts_per_domain
+        self.implicit_terms = implicit_terms
+        self.multiindices = multiindices
+        self.differentiation_method = differentiation_method
+        self.diff_kwargs = diff_kwargs if diff_kwargs is not None else {}
         self.is_uniform = is_uniform
         self.periodic = periodic
 
