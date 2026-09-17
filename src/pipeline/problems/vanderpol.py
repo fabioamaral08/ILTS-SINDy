@@ -20,11 +20,11 @@ class LorenzProblem(Problem):
 
     @property
     def true_params(self):
-        return (2.0,)
+        return (4.0,)
 
     @property
     def x0(self):
-        return [2.0,0.0]
+        return [0.0,1.0]
 
     @property
     def t_span(self):
@@ -41,9 +41,9 @@ class LorenzProblem(Problem):
         n_features = len(library.get_feature_names(self.state_names))
         true_coeff = np.zeros((n_features, len(self.state_names)))
         mu, = self.true_params
-        # Feature order:  x, y, x^2, xy, y^2, ...
-        true_coeff[1, 0] = 1.0  # dx/dt = y
-        true_coeff[0, 1] = -1.0  # dy/dt = mu * y - mu*y*x^2 - x
-        true_coeff[1, 1] = mu
-        true_coeff[6, 1] = -mu
+        # Feature order:  1, x, y, x^2, xy, y^2, ...
+        true_coeff[2, 0] = 1.0  # dx/dt = y
+        true_coeff[1, 1] = -1.0  # dy/dt = mu * y - mu*y*x^2 - x
+        true_coeff[2, 1] = mu
+        true_coeff[7, 1] = -mu
         return true_coeff
