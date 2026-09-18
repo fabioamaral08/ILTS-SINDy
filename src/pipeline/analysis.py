@@ -12,6 +12,7 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 import seaborn as sb
 import numpy as np
+from matplotlib.figure import Figure
 
 from . import io, metrics
 from .problems import get_problem
@@ -90,6 +91,16 @@ class ResultSet:
                 else:
                     raise ValueError(f"Unknown metric: {metric!r}")
         return grid
+
+    def all_times(self) -> np.ndarray:
+        """Flat array of per-realization fit times (seconds), pooled across
+        every noise/outlier grid cell."""
+        times = []
+        for nl in self.noise_levels:
+            for op in self.outlier_fractions:
+                cell = io.load_run_cell(self.results, nl, op)
+                times.extend(cell["time"])
+        return np.array(times, dtype=float)
 
 
 def plot_metric_grid(
@@ -186,3 +197,50 @@ def plot_metric_grid(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output_path, bbox_inches="tight")
     return fig
+
+
+def plot_execution_time(
+    result_sets: Sequence[ResultSet],
+    methods: Sequence[str] | None = None,
+    output_dir: str | Path | None = None,
+) -> dict[str, Figure]:
+    """One figure per problem, boxplotting per-realization fit time (seconds)
+    for every method, pooled across the whole noise/outlier grid."""
+    problems = list(dict.fromkeys(rs.problem.name for rs in result_sets))
+    if methods is None:
+        methods = list(dict.fromkeys(rs.method_name for rs in result_sets))
+    lookup = {(rs.problem.name, rs.method_name): rs for rs in result_sets}
+
+    n_methods = len(methods)
+    scale = max(0.7, min(np.sqrt(n_methods) / 2, 2.0))
+    title_fontsize = 14 * scale
+    label_fontsize = 11 * scale
+    tick_fontsize = 10 * scale
+
+    figs: dict[str, Figure] = {}
+    for problem_name in problems:
+        data = []
+        labels = []
+        for method_name in methods:
+            rs = lookup.get((problem_name, method_name.upper()))
+            if rs is None:
+                continue
+            data.append(rs.all_times())
+            labels.append(method_name)
+
+        fig, ax = plt.subplots(figsize=(1.5 * len(labels) + 2, 5))
+        sb.boxplot(data=data, ax=ax)
+        ax.set_yscale("log")
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=tick_fontsize)
+        ax.tick_params(axis="y", labelsize=tick_fontsize)
+        ax.set_ylabel("Execution time (s)", fontsize=label_fontsize)
+        ax.set_title(problem_name, fontsize=title_fontsize)
+        fig.tight_layout()
+
+        if output_dir is not None:
+            output_dir_path = Path(output_dir)
+            output_dir_path.mkdir(parents=True, exist_ok=True)
+            fig.savefig(output_dir_path / f"{problem_name}_time_boxplot.png", bbox_inches="tight")
+        figs[problem_name] = fig
+    return figs
