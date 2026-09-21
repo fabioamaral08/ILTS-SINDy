@@ -156,7 +156,7 @@ def plot_metric_grid(
     scale = max(1.0, min(np.sqrt(n_rows * n_cols) / 3, 3.0))
     title_fontsize = 15 * scale
     label_fontsize = 15 * scale
-    tick_fontsize = 13 * scale
+    tick_fontsize = 8 * scale
     suptitle_fontsize = 20 * scale
 
     # Each subplot's own physical size is fixed (6in x 5in) regardless of how
