@@ -139,12 +139,12 @@ def plot_metric_grid(
 
     # Scale text with the figure's physical size (relative to a 3x3 grid)
     # so method/problem names stay legible as the grid grows.
-    scale = max(0.7, min(np.sqrt(n_rows * n_cols) / 3, 2.5))
-    title_fontsize = 11 * scale
-    label_fontsize = 11 * scale
-    tick_fontsize = 9 * scale
-    annot_fontsize = 8 * scale
-    suptitle_fontsize = 16 * scale
+    scale = max(1.0, min(np.sqrt(n_rows * n_cols) / 3, 3.0))
+    title_fontsize = 15 * scale
+    label_fontsize = 15 * scale
+    tick_fontsize = 13 * scale
+    annot_fontsize = 12 * scale
+    suptitle_fontsize = 20 * scale
 
     for i, problem_name in enumerate(problems):
         for j, method_name in enumerate(methods):
