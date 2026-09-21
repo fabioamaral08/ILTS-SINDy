@@ -141,10 +141,11 @@ def plot_metric_grid(
 
     vmax = 1.0 if metric != "trajectory_error" else None
     n_rows, n_cols = len(problems), len(methods)
+    fig_height = 5 * n_rows
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(6 * n_cols, 5 * n_rows),
+        figsize=(6 * n_cols, fig_height),
         squeeze=False,
         sharex="col",
         sharey="row",
@@ -228,15 +229,18 @@ def plot_metric_grid(
             if i == 0:
                 ax.set_title(method_name, fontsize=title_fontsize)
 
-    fig.suptitle(_METRIC_LABELS.get(metric, metric), fontsize=suptitle_fontsize)
-
     # Reserve top margin for the suptitle proportional to its actual size
     # (in inches, plus padding) so it doesn't collide with the top row's
     # per-subplot titles as suptitle_fontsize scales with the grid, without
     # reserving more than that (which reads as a big gap above the plots).
-    fig_height = 5 * n_rows
     top_margin = (suptitle_fontsize / 72) * 1.3
     top = max(0.70, 1 - top_margin / fig_height)
+    # fig.suptitle defaults to y=0.98 (close to the very top of the canvas)
+    # regardless of `top` above, which leaves too little headroom above the
+    # text itself once suptitle_fontsize grows — so give it room proportional
+    # to its own size instead of sitting right at the edge.
+    suptitle_y = 1 - (suptitle_fontsize / 72 * 0.7) / fig_height
+    fig.suptitle(_METRIC_LABELS.get(metric, metric), fontsize=suptitle_fontsize, y=suptitle_y)
     # tight_layout recomputes its own spacing (overriding the gridspec_kw
     # wspace/hspace above) unless given small explicit padding, so pass it
     # here to actually keep the subplots close together.
@@ -244,10 +248,13 @@ def plot_metric_grid(
 
     # One shared colorbar spanning every row (all heatmaps use the same
     # vmin/vmax), instead of one per row — added after tight_layout, which
-    # shrinks the existing axes to make room for it.
+    # shrinks the existing axes to make room for it. `fraction` is relative
+    # to the *combined* width of every axes passed in, so a fixed fraction
+    # would make the colorbar thinner and thinner as more method columns are
+    # added — instead derive it from a fixed target width in inches.
     if last_mappable is not None:
         cbar = fig.colorbar(
-            last_mappable, ax=heatmap_axes, location="right", fraction=0.02, pad=0.02
+            last_mappable, ax=axes.ravel().tolist(), label="Accuracy"
         )
         cbar.set_label(_METRIC_LABELS.get(metric, metric), fontsize=label_fontsize)
         cbar.ax.tick_params(labelsize=tick_fontsize)
