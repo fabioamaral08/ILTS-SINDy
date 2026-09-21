@@ -24,6 +24,19 @@ _METRIC_LABELS = {
     "trajectory_error": "Trajectory error (NRMSE)",
 }
 
+_PROBLEM_LABELS = {
+    "LV": "Lotka-Volterra",
+    "ROSSLER": "Rössler",
+    "ABC": "ABC Flow",
+    "VAN_DER_POL": "Van der Pol",
+    "SIR": "SIR",
+    "LORENZ": "Lorenz",
+}
+
+
+def _problem_label(problem_name: str) -> str:
+    return _PROBLEM_LABELS.get(problem_name, problem_name)
+
 
 def _format_metric(value: float) -> str:
     """2-decimal formatting, except near 0/1 where rounding would display a
@@ -146,12 +159,22 @@ def plot_metric_grid(
     tick_fontsize = 13 * scale
     suptitle_fontsize = 20 * scale
 
-    # Annotation text has to fit inside each heatmap's own noise x outlier
-    # cells, which stay just as narrow regardless of the overall figure size
-    # — so it grows much more gently than the figure-level `scale` above.
-    annot_scale = max(1.0, min(np.sqrt(n_rows * n_cols) / 3, 1.6))
-    annot_fontsize = 7 * annot_scale
+    # Each subplot's own physical size is fixed (6in x 5in) regardless of how
+    # many problems/methods there are, so the annotation font is sized from
+    # the heatmap's own noise x outlier cell count — the thing that actually
+    # constrains how much room each annotation has — not from the number of
+    # subplots (`scale` above).
+    grid_rows = len(result_sets[0].noise_levels)
+    grid_cols = len(result_sets[0].outlier_fractions)
+    heatmap_width_in, heatmap_height_in = 4.8, 3.9
+    cell_width_pt = (heatmap_width_in / grid_cols) * 72
+    cell_height_pt = (heatmap_height_in / grid_rows) * 72
+    # Two lines of text ("mean" and "±std") need roughly 2.6x the font size in
+    # vertical space, and each character is roughly a third of the font size
+    # wide; clamp to a sane readable range either way.
+    annot_fontsize = max(6.0, min(cell_height_pt / 2.6, cell_width_pt / 3.6, 13.0))
 
+    last_mappable = None
     for i, problem_name in enumerate(problems):
         for j, method_name in enumerate(methods):
             ax = axes[i][j]
@@ -160,7 +183,6 @@ def plot_metric_grid(
                 ax.axis("off")
                 continue
             mean_grid, std_grid = rs.metric_grid(metric)
-            is_last_column = j == len(methods) - 1
             annot_labels = np.array(
                 [
                     [f"{_format_metric(m)}\n±{s:.3f}" for m, s in zip(mean_row, std_row)]
@@ -176,16 +198,11 @@ def plot_metric_grid(
                 vmin=0,
                 vmax=vmax,
                 ax=ax,
-                cbar=is_last_column,
-                cbar_kws={"label": _METRIC_LABELS.get(metric, metric)} if is_last_column else None,
+                cbar=False,
             )
+            last_mappable = ax.collections[0]
             ax.invert_yaxis()
             ax.tick_params(labelsize=tick_fontsize)
-            if is_last_column:
-                cbar = ax.collections[0].colorbar
-                assert cbar is not None
-                cbar.ax.tick_params(labelsize=tick_fontsize)
-                cbar.ax.yaxis.label.set_fontsize(label_fontsize)
 
             if i == len(problems) - 1:
                 ax.set_xticklabels(
@@ -196,7 +213,7 @@ def plot_metric_grid(
                 ax.tick_params(labelbottom=False)
             if j == 0:
                 ax.set_yticklabels([f"{v * 100:g}%" for v in rs.noise_levels])
-                ax.set_ylabel(f"{problem_name}\nNoise level", fontsize=label_fontsize)
+                ax.set_ylabel(f"{_problem_label(problem_name)}\nNoise level", fontsize=label_fontsize)
             else:
                 ax.tick_params(labelleft=False)
             if i == 0:
@@ -206,14 +223,23 @@ def plot_metric_grid(
 
     # Reserve top margin for the suptitle proportional to its actual size
     # (in inches, plus padding) so it doesn't collide with the top row's
-    # per-subplot titles as suptitle_fontsize scales with the grid.
+    # per-subplot titles as suptitle_fontsize scales with the grid, without
+    # reserving more than that (which reads as a big gap above the plots).
     fig_height = 5 * n_rows
-    top_margin = (suptitle_fontsize / 72) * 2.5
-    top = max(0.80, 1 - top_margin / fig_height)
+    top_margin = (suptitle_fontsize / 72) * 1.3
+    top = max(0.90, 1 - top_margin / fig_height)
     # tight_layout recomputes its own spacing (overriding the gridspec_kw
     # wspace/hspace above) unless given small explicit padding, so pass it
     # here to actually keep the subplots close together.
     fig.tight_layout(rect=(0, 0, 1, top), w_pad=0.3, h_pad=0.5)
+
+    # One shared colorbar spanning every row (all heatmaps use the same
+    # vmin/vmax), instead of one per row — added after tight_layout, which
+    # shrinks the existing axes to make room for it.
+    if last_mappable is not None:
+        cbar = fig.colorbar(last_mappable, ax=axes, fraction=0.02, pad=0.02)
+        cbar.set_label(_METRIC_LABELS.get(metric, metric), fontsize=label_fontsize)
+        cbar.ax.tick_params(labelsize=tick_fontsize)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -260,7 +286,7 @@ def plot_execution_time(
         ax = axes_flat[idx]
         data = []
         labels = []
-        print(problem_name)
+        print(_problem_label(problem_name))
         for method_name in methods:
             rs = lookup.get((problem_name, method_name.upper()))
             if rs is None:
@@ -276,7 +302,7 @@ def plot_execution_time(
         ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=tick_fontsize)
         ax.tick_params(axis="y", labelsize=tick_fontsize)
         ax.set_ylabel("Execution time (s)", fontsize=label_fontsize)
-        ax.set_title(problem_name, fontsize=title_fontsize)
+        ax.set_title(_problem_label(problem_name), fontsize=title_fontsize)
 
         # Annotate each box with its mean +- std, above the box's max value
         # (multiplicative offset since the axis is log-scaled).

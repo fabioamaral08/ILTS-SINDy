@@ -18,7 +18,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from . import io
-from .analysis import ResultSet
+from .analysis import ResultSet, _problem_label
 from .problems.base import Problem
 
 
@@ -138,7 +138,7 @@ def plot_trajectory_errors(
         means = [r.mean_error if r else 0.0 for r in rs]
         stds = [r.std_error if r else 0.0 for r in rs]
         bar_x = x + i * width
-        ax.bar(bar_x, means, width, yerr=stds, label=problem_name, capsize=3)
+        ax.bar(bar_x, means, width, yerr=stds, label=_problem_label(problem_name), capsize=3)
 
         for xb, r in zip(bar_x, rs):
             if r is None or r.n_failed == 0:
