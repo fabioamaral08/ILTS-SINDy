@@ -1,9 +1,11 @@
-"""CLI: build result figures (coefficient accuracy, exact-model recovery,
-trajectory error) comparing a list of methods across a list of problems.
+"""CLI: for each method's saved coefficient matrix (from `cli_run_method`),
+simulate the discovered system and score it by MSE against the noiseless
+trajectory — for comparing discovered-model quality across methods and
+problems.
 
 Usage:
-    python cli_analyse.py --problems SIR LORENZ LV --methods SINDY ESINDY SINDY-LTS \
-        --metrics accuracy exact_recovery trajectory_error -o figs
+    python cli_trajectory_error.py --problems SIR LORENZ LV \
+        --methods SINDY SINDY-LTS SR3 ESINDY WSINDY -o figs/trajectory_error.png
 """
 from __future__ import annotations
 
@@ -11,7 +13,8 @@ import argparse
 
 import numpy as np
 
-from pipeline.analysis import ResultSet, plot_metric_grid
+from pipeline.analysis import ResultSet
+from pipeline.benchmark import plot_trajectory_errors, trajectory_error_benchmark
 from pipeline.methods import list_methods
 from pipeline.problems import list_problems
 
@@ -27,15 +30,15 @@ def main():
     parser.add_argument(
         "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
     )
-    parser.add_argument(
-        "--metrics", nargs="+", default=["accuracy", "exact_recovery"]
-    )
     parser.add_argument("--data-dir", default="data")
     parser.add_argument("--coeffs-dir", default="coeffs")
-    parser.add_argument("-o", "--output-dir", default="figs")
     parser.add_argument(
-        "--format", default="png", help="File format to save figures as (e.g. png, pdf, svg)."
+        "--time-limit",
+        type=float,
+        default=5.0,
+        help="Max wall-clock seconds per simulation before it's counted as failed.",
     )
+    parser.add_argument("-o", "--output", default="figs/trajectory_error.png")
     args = parser.parse_args()
 
     result_sets = [
@@ -52,10 +55,17 @@ def main():
         for method_name in args.methods
     ]
 
-    for metric in args.metrics:
-        out_path = f"{args.output_dir}/{metric}.{args.format}"
-        plot_metric_grid(result_sets, metric, methods=args.methods, output_path=out_path)
-        print(f"Saved {out_path}")
+    results = trajectory_error_benchmark(result_sets, time_limit=args.time_limit)
+
+    for r in results:
+        print(
+            f"{r.problem_name:8s} {r.method_name:10s} "
+            f"MSE={r.mean_error:.4g} +/- {r.std_error:.4g}  "
+            f"failed={r.n_failed}/{r.n_total}"
+        )
+
+    plot_trajectory_errors(results, output_path=args.output)
+    print(f"Saved {args.output}")
 
 
 if __name__ == "__main__":

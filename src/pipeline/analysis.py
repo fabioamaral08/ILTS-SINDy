@@ -71,26 +71,35 @@ class ResultSet:
             results=results,
         )
 
-    def metric_grid(self, metric: str) -> np.ndarray:
+    def metric_grid(self, metric: str) -> tuple[np.ndarray, np.ndarray]:
+        """Returns (mean_grid, std_grid) of `metric` over noise x outlier."""
         library = self.problem.feature_library()
         true_coeff = self.problem.true_coefficients(library)
-        grid = np.zeros((len(self.noise_levels), len(self.outlier_fractions)))
+        mean_grid = np.zeros((len(self.noise_levels), len(self.outlier_fractions)))
+        std_grid = np.zeros((len(self.noise_levels), len(self.outlier_fractions)))
         for i, nl in enumerate(self.noise_levels):
             for j, op in enumerate(self.outlier_fractions):
                 cell = io.load_run_cell(self.results, nl, op)
                 if metric == "trajectory_error":
-                    grid[i, j] = np.mean(cell["trajectory_error"])
+                    mean_grid[i, j] = np.mean(cell["trajectory_error"])
+                    std_grid[i, j] = np.std(cell["trajectory_error"])
                 elif metric == "accuracy":
-                    grid[i, j] = np.mean(
+                    mean_grid[i, j] = np.mean(
+                        [metrics.coefficient_accuracy(true_coeff, c) for c in cell["coefficients"]]
+                    )
+                    std_grid[i, j] = np.std(
                         [metrics.coefficient_accuracy(true_coeff, c) for c in cell["coefficients"]]
                     )
                 elif metric == "exact_recovery":
-                    grid[i, j] = np.mean(
+                    std_grid[i, j] = np.std(
+                        [metrics.exact_recovery(true_coeff, c) for c in cell["coefficients"]]
+                    )
+                    mean_grid[i, j] = np.mean(
                         [metrics.exact_recovery(true_coeff, c) for c in cell["coefficients"]]
                     )
                 else:
                     raise ValueError(f"Unknown metric: {metric!r}")
-        return grid
+        return mean_grid, std_grid
 
     def all_times(self) -> np.ndarray:
         """Flat array of per-realization fit times (seconds), pooled across
@@ -144,11 +153,16 @@ def plot_metric_grid(
             if rs is None:
                 ax.axis("off")
                 continue
-            grid = rs.metric_grid(metric)
+            mean_grid, std_grid = rs.metric_grid(metric)
             is_last_column = j == len(methods) - 1
-            annot_labels = np.array([[_format_metric(v) for v in row] for row in grid])
+            annot_labels = np.array(
+                [
+                    [f"{_format_metric(m)}\n±{s:.3f}" for m, s in zip(mean_row, std_row)]
+                    for mean_row, std_row in zip(mean_grid, std_grid)
+                ]
+            )
             ax = sb.heatmap(
-                grid,
+                mean_grid,
                 annot=annot_labels,
                 fmt="",
                 annot_kws={"fontsize": annot_fontsize},
@@ -202,33 +216,51 @@ def plot_metric_grid(
 def plot_execution_time(
     result_sets: Sequence[ResultSet],
     methods: Sequence[str] | None = None,
-    output_dir: str | Path | None = None,
-) -> dict[str, Figure]:
-    """One figure per problem, boxplotting per-realization fit time (seconds)
-    for every method, pooled across the whole noise/outlier grid."""
+    output_path: str | Path | None = None,
+) -> Figure:
+    """One figure, one axis per problem (grid as square as possible), each
+    boxplotting per-realization fit time (seconds) for every method, pooled
+    across the whole noise/outlier grid. Also prints mean +- std per
+    (problem, method)."""
     problems = list(dict.fromkeys(rs.problem.name for rs in result_sets))
     if methods is None:
         methods = list(dict.fromkeys(rs.method_name for rs in result_sets))
     lookup = {(rs.problem.name, rs.method_name): rs for rs in result_sets}
+
+    n_problems = len(problems)
+    n_cols = int(np.ceil(np.sqrt(n_problems)))
+    n_rows = int(np.ceil(n_problems / n_cols))
 
     n_methods = len(methods)
     scale = max(0.7, min(np.sqrt(n_methods) / 2, 2.0))
     title_fontsize = 14 * scale
     label_fontsize = 11 * scale
     tick_fontsize = 10 * scale
+    annot_fontsize = 8 * scale
+    suptitle_fontsize = 18 * scale
 
-    figs: dict[str, Figure] = {}
-    for problem_name in problems:
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=(max(4, 1.5 * n_methods + 2) * n_cols, 5 * n_rows),
+        squeeze=False,
+    )
+    axes_flat = axes.ravel()
+
+    for idx, problem_name in enumerate(problems):
+        ax = axes_flat[idx]
         data = []
         labels = []
+        print(problem_name)
         for method_name in methods:
             rs = lookup.get((problem_name, method_name.upper()))
             if rs is None:
                 continue
-            data.append(rs.all_times())
+            times = rs.all_times()
+            data.append(times)
             labels.append(method_name)
+            print(f"  {method_name}: {times.mean():.4g} +- {times.std():.4g} s")
 
-        fig, ax = plt.subplots(figsize=(1.5 * len(labels) + 2, 5))
         sb.boxplot(data=data, ax=ax)
         ax.set_yscale("log")
         ax.set_xticks(range(len(labels)))
@@ -236,11 +268,33 @@ def plot_execution_time(
         ax.tick_params(axis="y", labelsize=tick_fontsize)
         ax.set_ylabel("Execution time (s)", fontsize=label_fontsize)
         ax.set_title(problem_name, fontsize=title_fontsize)
-        fig.tight_layout()
 
-        if output_dir is not None:
-            output_dir_path = Path(output_dir)
-            output_dir_path.mkdir(parents=True, exist_ok=True)
-            fig.savefig(output_dir_path / f"{problem_name}_time_boxplot.png", bbox_inches="tight")
-        figs[problem_name] = fig
-    return figs
+        # Annotate each box with its mean +- std, above the box's max value
+        # (multiplicative offset since the axis is log-scaled).
+        for k, times in enumerate(data):
+            ax.text(
+                k,
+                times.max() * 1.2,
+                f"{times.mean():.3g}\n±{times.std():.3g}",
+                ha="center",
+                va="bottom",
+                fontsize=annot_fontsize,
+            )
+        ymin, ymax = ax.get_ylim()
+        ax.set_ylim(ymin, ymax * 2.2)
+
+    for idx in range(n_problems, len(axes_flat)):
+        axes_flat[idx].axis("off")
+
+    fig.suptitle("Execution time", fontsize=suptitle_fontsize)
+
+    fig_height = 5 * n_rows
+    top_margin = (suptitle_fontsize / 72) * 2.5
+    top = max(0.80, 1 - top_margin / fig_height)
+    fig.tight_layout(rect=(0, 0, 1, top))
+
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, bbox_inches="tight")
+    return fig

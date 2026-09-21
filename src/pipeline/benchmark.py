@@ -1,9 +1,10 @@
-"""Times each Method's `fit` call using a single representative hyperparameter
-combination (`Method.default_hyperparams`, not the full grid searched by
-`pipeline.runner`), for comparing raw execution cost across methods and
-problems. Timed once per independent noisy realization (not repeats of the
-same data), so the reported std reflects data-dependent variability in fit
-time, not just measurement noise.
+"""Compares discovered-system trajectory error across methods and problems,
+sourced from the coefficient matrices already computed by `cli_run_method`
+(saved via `pipeline.io.save_run_results`, loaded through `analysis.ResultSet`)
+rather than refitting anything here. For each saved coefficient matrix, pooled
+across a ResultSet's whole noise/outlier grid, simulates the discovered model
+and scores it by MSE against the problem's noiseless trajectory, tracking
+simulations that fail to integrate or diverge as failures.
 """
 from __future__ import annotations
 
@@ -14,96 +15,117 @@ from typing import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.integrate import solve_ivp
 
-from .methods.base import Method
-from .noise import add_noise
+from . import io
+from .analysis import ResultSet
 from .problems.base import Problem
 
 
+class _SimulationTimeout(Exception):
+    """Raised inside `dynamics` to abort a solve_ivp call that's run too
+    long — e.g. a bad coefficient matrix makes the solver take extremely
+    small steps chasing a near-blow-up instead of failing outright."""
+
+
+def simulate_from_coefficients(
+    problem: Problem,
+    library,
+    coefficients: np.ndarray,
+    t: np.ndarray,
+    time_limit: float = 5.0,
+) -> np.ndarray | None:
+    """Integrate dx/dt = library(x) @ coefficients from the problem's true
+    initial condition. Returns the simulated trajectory (n_points, n_states),
+    or None if the integration doesn't converge, diverges to non-finite
+    values, or exceeds `time_limit` seconds of wall-clock time (all counted
+    as a failed simulation)."""
+    deadline = time.perf_counter() + time_limit
+
+    def dynamics(_t, x):
+        if time.perf_counter() > deadline:
+            raise _SimulationTimeout()
+        theta = library.transform(np.asarray(x, dtype=float).reshape(1, -1))
+        return (theta @ coefficients)[0]
+
+    try:
+        sol = solve_ivp(dynamics, (t[0], t[-1]), problem.x0, t_eval=t)
+    except _SimulationTimeout:
+        return None
+    if not sol.success or not np.all(np.isfinite(sol.y)):
+        return None
+    return sol.y.T
+
+
 @dataclass
-class TimingResult:
+class TrajectoryErrorResult:
     problem_name: str
     method_name: str
-    hyperparams: dict
-    seconds: list[float]
+    errors: list[float]
+    n_failed: int
+    n_total: int
 
     @property
-    def mean_seconds(self) -> float:
-        return float(np.mean(self.seconds))
+    def mean_error(self) -> float:
+        return float(np.mean(self.errors)) if self.errors else float("nan")
 
     @property
-    def std_seconds(self) -> float:
-        return float(np.std(self.seconds))
+    def std_error(self) -> float:
+        return float(np.std(self.errors)) if self.errors else float("nan")
 
 
-def time_method(
-    method: Method,
-    problem: Problem,
-    data_realizations: Sequence[np.ndarray],
-    t: np.ndarray,
-    library=None,
-    n_warmup: int = 1,
-) -> TimingResult:
-    """Times one `method.fit(data, t, library, **default_hyperparams)` call
-    per realization in `data_realizations` (independent noisy draws, not
-    repeats of the same data), so the reported std reflects how fit time
-    varies with the data itself (e.g. outlier count/placement for LTS-style
-    methods) rather than pure measurement noise. The first `n_warmup`
-    realizations are fit once, untimed, to absorb first-call overhead, and
-    excluded from the timed/reported set."""
-    library = library if library is not None else problem.feature_library()
-    hyperparams = method.default_hyperparams(problem)
+def trajectory_error_result_set(
+    result_set: ResultSet, time_limit: float = 5.0
+) -> TrajectoryErrorResult:
+    """Simulates every coefficient matrix saved in `result_set` (pooled across
+    its whole noise/outlier grid) and scores each by MSE against the
+    problem's noiseless trajectory. A simulation that fails to integrate,
+    diverges to non-finite values, or exceeds `time_limit` seconds (a bad
+    coefficient matrix can make the solver stall) is counted as a failure and
+    excluded from the reported error stats."""
+    problem = result_set.problem
+    library = problem.feature_library()
+    problem.true_coefficients(library)  # fits `library`'s output columns
+    t, clean = problem.simulate()
 
-    warmup, timed = data_realizations[:n_warmup], data_realizations[n_warmup:]
-    for data in warmup:
-        method.fit(data, t, library, **hyperparams)
+    errors = []
+    n_failed = 0
+    n_total = 0
+    for nl in result_set.noise_levels:
+        for op in result_set.outlier_fractions:
+            cell = io.load_run_cell(result_set.results, nl, op)
+            for coeff in cell["coefficients"]:
+                n_total += 1
+                sim = simulate_from_coefficients(problem, library, coeff, t, time_limit=time_limit)
+                if sim is None:
+                    n_failed += 1
+                    continue
+                errors.append(float(np.mean((sim - clean) ** 2)))
 
-    seconds = []
-    for data in timed:
-        start = time.perf_counter()
-        method.fit(data, t, library, **hyperparams)
-        seconds.append(time.perf_counter() - start)
-
-    return TimingResult(
+    return TrajectoryErrorResult(
         problem_name=problem.name,
-        method_name=method.name,
-        hyperparams=hyperparams,
-        seconds=seconds,
+        method_name=result_set.method_name,
+        errors=errors,
+        n_failed=n_failed,
+        n_total=n_total,
     )
 
 
-def benchmark(
-    problems: Sequence[Problem],
-    methods: Sequence[Method],
-    noise_level: float = 0.0,
-    outlier_fraction: float = 0.0,
-    n_realizations: int = 5,
-    n_warmup: int = 1,
-    seed: int | None = None,
-) -> list[TimingResult]:
-    """Times every (problem, method) pair on `n_realizations` independent
-    noisy realizations of that problem (plus `n_warmup` untimed ones), so the
-    same realizations are reused across methods for a fair comparison."""
-    if seed is not None:
-        np.random.seed(seed)
-
-    results = []
-    for problem in problems:
-        _, clean = problem.simulate()
-        t = problem.time_vector()
-        data_realizations = [
-            add_noise(clean, noise_level, outlier_fraction)[0]
-            for _ in range(n_warmup + n_realizations)
-        ]
-        for method in methods:
-            results.append(time_method(method, problem, data_realizations, t, n_warmup=n_warmup))
-    return results
+def trajectory_error_benchmark(
+    result_sets: Sequence[ResultSet], time_limit: float = 5.0
+) -> list[TrajectoryErrorResult]:
+    """One TrajectoryErrorResult per ResultSet (i.e. per problem/method pair
+    already run via `cli_run_method`)."""
+    return [trajectory_error_result_set(rs, time_limit=time_limit) for rs in result_sets]
 
 
-def plot_timings(results: Sequence[TimingResult], output_path: str | Path | None = None):
-    """Grouped bar chart of mean fit time per method, one bar group per
-    problem, log-scaled y-axis (fit times commonly span orders of magnitude
-    across methods)."""
+def plot_trajectory_errors(
+    results: Sequence[TrajectoryErrorResult], output_path: str | Path | None = None
+):
+    """Grouped bar chart of mean trajectory MSE (+- std as error bars) per
+    method, one bar group per problem, log-scaled y-axis. Each bar is
+    annotated with its failed-simulation count (excluded from the error
+    stats)."""
     problems = list(dict.fromkeys(r.problem_name for r in results))
     methods = list(dict.fromkeys(r.method_name for r in results))
     lookup = {(r.problem_name, r.method_name): r for r in results}
@@ -112,15 +134,26 @@ def plot_timings(results: Sequence[TimingResult], output_path: str | Path | None
     width = 0.8 / max(len(problems), 1)
     fig, ax = plt.subplots(figsize=(1.5 * len(methods) + 2, 5))
     for i, problem_name in enumerate(problems):
-        means = [lookup[(problem_name, m)].mean_seconds if (problem_name, m) in lookup else 0.0 for m in methods]
-        stds = [lookup[(problem_name, m)].std_seconds if (problem_name, m) in lookup else 0.0 for m in methods]
-        ax.bar(x + i * width, means, width, yerr=stds, label=problem_name, capsize=3)
+        rs = [lookup.get((problem_name, m)) for m in methods]
+        means = [r.mean_error if r else 0.0 for r in rs]
+        stds = [r.std_error if r else 0.0 for r in rs]
+        bar_x = x + i * width
+        ax.bar(bar_x, means, width, yerr=stds, label=problem_name, capsize=3)
+
+        for xb, r in zip(bar_x, rs):
+            if r is None or r.n_failed == 0:
+                continue
+            y_ref = r.mean_error + r.std_error
+            y = y_ref * 1.15 if np.isfinite(y_ref) and y_ref > 0 else 1e-6
+            ax.text(
+                xb, y, f"{r.n_failed}/{r.n_total}\nfailed", ha="center", va="bottom", fontsize=7
+            )
 
     ax.set_xticks(x + width * (len(problems) - 1) / 2)
     ax.set_xticklabels(methods, rotation=30, ha="right")
-    ax.set_ylabel("Fit time (s)")
+    ax.set_ylabel("Trajectory MSE vs. noiseless data")
     ax.set_yscale("log")
-    ax.set_title("Method execution time (fixed default hyperparameters, no grid search)")
+    ax.set_title("Discovered-system trajectory error (mean ± std; failed simulations excluded)")
     ax.legend(title="Problem")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
