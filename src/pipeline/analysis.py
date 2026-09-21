@@ -227,24 +227,9 @@ def plot_metric_grid(
             else:
                 ax.tick_params(labelleft=False)
             if i == 0:
-                ax.set_title(method_name, fontsize=title_fontsize)
+                ax.set_title(f'\n{method_name}', fontsize=title_fontsize)
 
-    # Reserve top margin for the suptitle proportional to its actual size
-    # (in inches, plus padding) so it doesn't collide with the top row's
-    # per-subplot titles as suptitle_fontsize scales with the grid, without
-    # reserving more than that (which reads as a big gap above the plots).
-    top_margin = (suptitle_fontsize / 72) * 1.3
-    top = max(0.70, 1 - top_margin / fig_height)
-    # fig.suptitle defaults to y=0.98 (close to the very top of the canvas)
-    # regardless of `top` above, which leaves too little headroom above the
-    # text itself once suptitle_fontsize grows — so give it room proportional
-    # to its own size instead of sitting right at the edge.
-    suptitle_y = 1 - (suptitle_fontsize / 72 * 0.7) / fig_height
-    fig.suptitle(_METRIC_LABELS.get(metric, metric), fontsize=suptitle_fontsize, y=suptitle_y)
-    # tight_layout recomputes its own spacing (overriding the gridspec_kw
-    # wspace/hspace above) unless given small explicit padding, so pass it
-    # here to actually keep the subplots close together.
-    fig.tight_layout(rect=(0, 0, 1, top), w_pad=0.3, h_pad=0.5)
+    fig.suptitle(_METRIC_LABELS.get(metric, metric), fontsize=suptitle_fontsize)
 
     # One shared colorbar spanning every row (all heatmaps use the same
     # vmin/vmax), instead of one per row — added after tight_layout, which
@@ -254,7 +239,7 @@ def plot_metric_grid(
     # added — instead derive it from a fixed target width in inches.
     if last_mappable is not None:
         cbar = fig.colorbar(
-            last_mappable, ax=axes.ravel().tolist(), label="Accuracy"
+            last_mappable, ax=axes.ravel().tolist(), label="Accuracy", aspect=50
         )
         cbar.set_label(_METRIC_LABELS.get(metric, metric), fontsize=label_fontsize)
         cbar.ax.tick_params(labelsize=tick_fontsize)
