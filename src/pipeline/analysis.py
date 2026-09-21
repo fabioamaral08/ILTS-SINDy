@@ -143,7 +143,7 @@ def plot_metric_grid(
     title_fontsize = 15 * scale
     label_fontsize = 15 * scale
     tick_fontsize = 13 * scale
-    annot_fontsize = 12 * scale
+    annot_fontsize = 8 * scale
     suptitle_fontsize = 20 * scale
 
     for i, problem_name in enumerate(problems):
@@ -242,7 +242,7 @@ def plot_execution_time(
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(max(4, 1.5 * n_methods + 2) * n_cols, 5 * n_rows),
+        figsize=(max(4, n_methods + 2) * n_cols, 5 * n_rows),
         squeeze=False,
     )
     axes_flat = axes.ravel()
