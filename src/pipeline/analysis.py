@@ -201,6 +201,7 @@ def plot_metric_grid(
                 vmax=vmax,
                 ax=ax,
                 cbar=False,
+                yticklabels=[f"{v * 100:g}%" for v in rs.noise_levels]
             )
             last_mappable = ax.collections[0]
             heatmap_axes.append(ax)
@@ -218,10 +219,10 @@ def plot_metric_grid(
             else:
                 ax.tick_params(labelbottom=False)
             if j == 0:
-                ax.set_yticks(
-                    np.arange(len(rs.noise_levels)) + 0.5,
-                    labels=[f"{v * 100:g}%" for v in rs.noise_levels],
-                )
+                # ax.set_yticks(
+                #     np.arange(len(rs.noise_levels)) + 0.5,
+                #     labels=[f"{v * 100:g}%" for v in rs.noise_levels],
+                # )
                 ax.set_ylabel(f"{_problem_label(problem_name)}\nNoise level", fontsize=label_fontsize)
             else:
                 ax.tick_params(labelleft=False)
