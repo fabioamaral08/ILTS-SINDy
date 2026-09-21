@@ -206,13 +206,12 @@ def plot_metric_grid(
             last_mappable = ax.collections[0]
             heatmap_axes.append(ax)
             ax.invert_yaxis()
-            ax.tick_params(labelsize=tick_fontsize)
+            ax.tick_params(labelsize=tick_fontsize, rotation=45)
 
             if i == len(problems) - 1:
                 ax.set_xticks(
                     np.arange(len(rs.outlier_fractions)) + 0.5,
                     labels=[f"{v * 100:g}%" for v in rs.outlier_fractions],
-                    rotation=45,
                     ha="right",
                 )
                 ax.set_xlabel("Outlier percentage", fontsize=label_fontsize)
@@ -237,7 +236,7 @@ def plot_metric_grid(
     # reserving more than that (which reads as a big gap above the plots).
     fig_height = 5 * n_rows
     top_margin = (suptitle_fontsize / 72) * 1.3
-    top = max(0.90, 1 - top_margin / fig_height)
+    top = max(0.70, 1 - top_margin / fig_height)
     # tight_layout recomputes its own spacing (overriding the gridspec_kw
     # wspace/hspace above) unless given small explicit padding, so pass it
     # here to actually keep the subplots close together.
