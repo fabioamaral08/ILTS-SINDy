@@ -131,10 +131,11 @@ def plot_metric_grid(
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(5 * n_cols, 4 * n_rows),
+        figsize=(6 * n_cols, 5 * n_rows),
         squeeze=False,
         sharex="col",
         sharey="row",
+        gridspec_kw={"wspace": 0.08, "hspace": 0.12},
     )
 
     # Scale text with the figure's physical size (relative to a 3x3 grid)
@@ -143,8 +144,13 @@ def plot_metric_grid(
     title_fontsize = 15 * scale
     label_fontsize = 15 * scale
     tick_fontsize = 13 * scale
-    annot_fontsize = 8 * scale
     suptitle_fontsize = 20 * scale
+
+    # Annotation text has to fit inside each heatmap's own noise x outlier
+    # cells, which stay just as narrow regardless of the overall figure size
+    # — so it grows much more gently than the figure-level `scale` above.
+    annot_scale = max(1.0, min(np.sqrt(n_rows * n_cols) / 3, 1.6))
+    annot_fontsize = 7 * annot_scale
 
     for i, problem_name in enumerate(problems):
         for j, method_name in enumerate(methods):
@@ -201,10 +207,13 @@ def plot_metric_grid(
     # Reserve top margin for the suptitle proportional to its actual size
     # (in inches, plus padding) so it doesn't collide with the top row's
     # per-subplot titles as suptitle_fontsize scales with the grid.
-    fig_height = 4 * n_rows
+    fig_height = 5 * n_rows
     top_margin = (suptitle_fontsize / 72) * 2.5
     top = max(0.80, 1 - top_margin / fig_height)
-    fig.tight_layout(rect=(0, 0, 1, top))
+    # tight_layout recomputes its own spacing (overriding the gridspec_kw
+    # wspace/hspace above) unless given small explicit padding, so pass it
+    # here to actually keep the subplots close together.
+    fig.tight_layout(rect=(0, 0, 1, top), w_pad=0.3, h_pad=0.5)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -235,14 +244,14 @@ def plot_execution_time(
     scale = max(0.7, min(np.sqrt(n_methods) / 2, 2.0))
     title_fontsize = 14 * scale
     label_fontsize = 11 * scale
-    tick_fontsize = 10 * scale
-    annot_fontsize = 8 * scale
+    tick_fontsize = 12 * scale
+    annot_fontsize = 12 * scale
     suptitle_fontsize = 18 * scale
 
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(max(4, n_methods + 2) * n_cols, 5 * n_rows),
+        figsize=(max(4, n_methods + 1.5) * n_cols, 5 * n_rows),
         squeeze=False,
     )
     axes_flat = axes.ravel()
