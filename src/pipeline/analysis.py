@@ -170,11 +170,13 @@ def plot_metric_grid(
     cell_width_pt = (heatmap_width_in / grid_cols) * 72
     cell_height_pt = (heatmap_height_in / grid_rows) * 72
     # Two lines of text ("mean" and "±std") need roughly 2.6x the font size in
-    # vertical space, and each character is roughly a third of the font size
-    # wide; clamp to a sane readable range either way.
-    annot_fontsize = max(6.0, min(cell_height_pt / 2.6, cell_width_pt / 3.6, 13.0))
+    # vertical space. The "±std" line is the wider of the two (up to 5 chars,
+    # e.g. "±0.12") at roughly 0.6x the font size per character; clamp to a
+    # sane readable range either way.
+    annot_fontsize = max(6.0, min(cell_height_pt / 2.6, cell_width_pt / (5 * 0.6), 11.0))
 
     last_mappable = None
+    heatmap_axes = []
     for i, problem_name in enumerate(problems):
         for j, method_name in enumerate(methods):
             ax = axes[i][j]
@@ -185,7 +187,7 @@ def plot_metric_grid(
             mean_grid, std_grid = rs.metric_grid(metric)
             annot_labels = np.array(
                 [
-                    [f"{_format_metric(m)}\n±{s:.3f}" for m, s in zip(mean_row, std_row)]
+                    [f"{_format_metric(m)}\n±{s:.2f}" for m, s in zip(mean_row, std_row)]
                     for mean_row, std_row in zip(mean_grid, std_grid)
                 ]
             )
@@ -201,18 +203,25 @@ def plot_metric_grid(
                 cbar=False,
             )
             last_mappable = ax.collections[0]
+            heatmap_axes.append(ax)
             ax.invert_yaxis()
             ax.tick_params(labelsize=tick_fontsize)
 
             if i == len(problems) - 1:
-                ax.set_xticklabels(
-                    [f"{v * 100:g}%" for v in rs.outlier_fractions], rotation=45, ha="right"
+                ax.set_xticks(
+                    np.arange(len(rs.outlier_fractions)) + 0.5,
+                    labels=[f"{v * 100:g}%" for v in rs.outlier_fractions],
+                    rotation=45,
+                    ha="right",
                 )
                 ax.set_xlabel("Outlier percentage", fontsize=label_fontsize)
             else:
                 ax.tick_params(labelbottom=False)
             if j == 0:
-                ax.set_yticklabels([f"{v * 100:g}%" for v in rs.noise_levels])
+                ax.set_yticks(
+                    np.arange(len(rs.noise_levels)) + 0.5,
+                    labels=[f"{v * 100:g}%" for v in rs.noise_levels],
+                )
                 ax.set_ylabel(f"{_problem_label(problem_name)}\nNoise level", fontsize=label_fontsize)
             else:
                 ax.tick_params(labelleft=False)
@@ -237,7 +246,9 @@ def plot_metric_grid(
     # vmin/vmax), instead of one per row — added after tight_layout, which
     # shrinks the existing axes to make room for it.
     if last_mappable is not None:
-        cbar = fig.colorbar(last_mappable, ax=axes, fraction=0.02, pad=0.02)
+        cbar = fig.colorbar(
+            last_mappable, ax=heatmap_axes, location="right", fraction=0.02, pad=0.02
+        )
         cbar.set_label(_METRIC_LABELS.get(metric, metric), fontsize=label_fontsize)
         cbar.ax.tick_params(labelsize=tick_fontsize)
 
