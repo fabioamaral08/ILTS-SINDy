@@ -72,12 +72,12 @@ def ilts_search(A,b, p : int|float|None =None, max_it = 100, p_min = 0.8, p_max 
         p_max = max(1, int(np.ceil(p_max * m)))
         crit_best = 0
 
-        p_values = np.arange(p_min, p_max +1)
-        p_list = [3 * pi - 2 *m for pi in p_values if (3 * pi - 2 *m) >0]
-        for p in p_list:
+        p_values = np.arange(p_min, p_max +1, dtype=int)
+        # p_list = [3 * pi - 2 *m for pi in p_values if (3 * pi - 2 *m) >0]
+        for p in p_values:
             xr, fr, stats, I_sorted = iter_ilst(p, vr,xr,A ,b, max_it)
             Lpp1 = 0.5 * fr**2
-            if p == p_list[0]:
+            if p == p_values[0]:
                 xr_best, fr_best, stats_best, I_sorted_best = (xr, fr, stats, I_sorted)
             else:
                 crit = (Lpp1 - Lp)/Lp
