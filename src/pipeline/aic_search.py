@@ -49,7 +49,7 @@ class MethodRunner:
 
     def run_single(self, data: np.ndarray, t: np.ndarray, p: int, hyperparams: dict) -> RunResult:
         hyperparams = {**hyperparams, "p": p}
-        fit_result = self.method.fit(data, t, self.library, None, **hyperparams)
+        fit_result = self.method.fit(data, t, self.library, **hyperparams)
         score = self._score(fit_result.coefficients, data, t)
         return RunResult(
             coefficients=fit_result.coefficients,
