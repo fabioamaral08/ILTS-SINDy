@@ -119,6 +119,23 @@ def iter_ilst(p, vr,xr,A ,b, max_it):
 
 
 
+def AIC(Ci, y, A):
+    """Corrected Akaike Information Criterion (AICc) for a sparse linear fit
+    y ~= A @ Ci: trades off residual sum of squares against model complexity
+    (number of nonzero coefficients in Ci), with the small-sample correction
+    since the LOVO-trimmed subset can be small relative to the number of
+    candidate terms."""
+    m = y.shape[0]
+    k = int(np.count_nonzero(Ci))
+    rss = float(np.sum((y[:, 0] - A @ Ci[:, 0]) ** 2))
+    rss = max(rss, np.finfo(float).tiny)  # guard log(0)
+    aic = m * np.log(rss / m) + 2 * k
+    denom = m - k - 1
+    if denom > 0:
+        aic += 2 * k * (k + 1) / denom
+    return aic
+
+
 def SINDy_LTS(x_dot, D, p, threshold=1e-1, alpha = 0.0, max_it=2000):
     n = x_dot.shape[-1]
     m = x_dot.shape[0]
@@ -140,9 +157,24 @@ def SINDy_LTS(x_dot, D, p, threshold=1e-1, alpha = 0.0, max_it=2000):
             print('[Warning] LOVO not finished successefuly')
         Ap = D[Ir]
         y_dot[:,0] = x_dot[Ir,i]
-        Ci = SINDy(y_dot, Ap, threshold=threshold,alpha=alpha)
+        if threshold is not None:
+            Ci = SINDy(y_dot, Ap, threshold=threshold,alpha=alpha)
+        else:
+            eps_list = np.logspace(-5,1,7)
+            best_aic = np.inf
+            best_Ci = None
+            for eps in eps_list:
+                Ci_eps = SINDy(y_dot, Ap, threshold=eps, alpha=alpha)
+                aic = AIC(Ci_eps, y_dot, Ap)
+                if aic < best_aic:
+                    best_aic = aic
+                    best_Ci = Ci_eps
+            Ci = best_Ci
+
         Xi[:,i:i+1] = Ci
     return Xi, I_sorted
+
+
 
 
 def SINDy_LTS_search(x_dot, D, p=None, threshold=1e-1, alpha = 0.0, max_it=2000, p_min = 0.8, p_max = 1.0):
