@@ -119,6 +119,32 @@ def trajectory_error_benchmark(
     return [trajectory_error_result_set(rs, time_limit=time_limit) for rs in result_sets]
 
 
+def save_trajectory_error_result(path: str | Path, result: TrajectoryErrorResult) -> None:
+    """Saves one TrajectoryErrorResult (e.g. from a single problem/method run)
+    so it can be plotted later, separately, alongside other saved runs."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(
+        path,
+        problem_name=result.problem_name,
+        method_name=result.method_name,
+        errors=np.array(result.errors, dtype=float),
+        n_failed=result.n_failed,
+        n_total=result.n_total,
+    )
+
+
+def load_trajectory_error_result(path: str | Path) -> TrajectoryErrorResult:
+    data = np.load(path, allow_pickle=True)
+    return TrajectoryErrorResult(
+        problem_name=str(data["problem_name"]),
+        method_name=str(data["method_name"]),
+        errors=list(data["errors"]),
+        n_failed=int(data["n_failed"]),
+        n_total=int(data["n_total"]),
+    )
+
+
 def plot_trajectory_errors(
     results: Sequence[TrajectoryErrorResult], output_path: str | Path | None = None
 ):

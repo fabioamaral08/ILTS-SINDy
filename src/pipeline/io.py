@@ -49,6 +49,12 @@ def results_path(
     return Path(output_dir) /  f"{problem_name.upper()}" / f"{problem_name.upper()}_{method_name.upper()}_{n_realizations}_samples.npz"
 
 
+def trajectory_error_path(
+    problem_name: str, method_name: str, output_dir: str | Path
+) -> Path:
+    return Path(output_dir) / f"{problem_name.upper()}" / f"{problem_name.upper()}_{method_name.upper()}_trajectory_error.npz"
+
+
 def save_dataset(path: Path, grid: dict[float, dict[float, dict]]) -> None:
     """`grid`: noise_level -> outlier_percent -> {"data": array, "outlier_index": array}."""
     save_dct = {}
