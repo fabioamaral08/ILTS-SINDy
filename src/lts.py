@@ -77,7 +77,7 @@ def ilts_search(A,b, p : int|float|None =None, max_it = 100, p_min = 0.8, p_max 
         xr_best, fr_best, stats_best, I_sorted_best, p_best = [None]*5
         for p in p_list:
             xr_i, fr_i, stats_i, I_sorted_i = iter_ilst(p, vr,xr,A ,b, max_it)
-            _, fr_ip1, _, _ = iter_ilst(p, vr,xr,A ,b, max_it)
+            _, fr_ip1, _, _ = iter_ilst(p+1, vr,xr,A ,b, max_it)
             Lp_i = 0.5 * fr_i**2
             Lp_ip1 = 0.5 * fr_ip1**2
             crit = (Lp_ip1 - Lp_i)/Lp_i
