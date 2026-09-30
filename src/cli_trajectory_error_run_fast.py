@@ -1,20 +1,26 @@
-"""CLI: compute discovered-system trajectory error for one problem/method
-pair (coefficients from `cli_run_method`) and save it to a file. Run
-`cli_trajectory_error_plot.py` separately to compare saved results across
-problems/methods.
+"""CLI: same as `cli_trajectory_error_run.py` (score one problem/method's saved
+coefficient matrices by simulating them against the noiseless trajectory and
+save the result), but using the faster feature evaluator from
+`pipeline.fast_benchmark`. Prints which evaluator was used and how long the
+run took. Output files have the same format/location as the slow script, so
+`cli_trajectory_error.py` and `cli_trajectory_error_lines.py` read them
+unchanged.
 
 Usage:
-    python cli_trajectory_error_run.py --problem SIR --method SINDY-LTS
+    python cli_trajectory_error_run_fast.py --problem ABC --method SINDY \
+        --coeffs-dir ../coeff --data-dir ../data -o ../traj_err --n-jobs 10
 """
 from __future__ import annotations
 
 import argparse
+import time
 
 import numpy as np
 
 from pipeline import io as pipeline_io
 from pipeline.analysis import ResultSet
-from pipeline.benchmark import save_trajectory_error_result, trajectory_error_result_set
+from pipeline.benchmark import save_trajectory_error_result
+from pipeline.fast_benchmark import fast_trajectory_error_result_set
 from pipeline.methods import list_methods
 from pipeline.problems import list_problems
 
@@ -65,9 +71,12 @@ def main():
         coeffs_dir=args.coeffs_dir,
     )
 
-    result = trajectory_error_result_set(
+    start = time.perf_counter()
+    result, description = fast_trajectory_error_result_set(
         result_set, time_limit=args.time_limit, n_jobs=args.n_jobs
     )
+    elapsed = time.perf_counter() - start
+    print(f"Feature evaluator: {description}  ({elapsed:.1f}s for {result.n_total} simulations)")
     print(
         f"{result.problem_name:8s} {result.method_name:10s} "
         f"MSE={result.mean_error:.4g} +/- {result.std_error:.4g}  "

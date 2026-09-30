@@ -70,22 +70,21 @@ def ilts_search(A,b, p : int|float|None =None, max_it = 100, p_min = 0.8, p_max 
     if p is None:
         p_min = max(1, int(np.ceil(p_min * m)))
         p_max = max(1, int(np.ceil(p_max * m)))
-        crit_best = 0
+        crit_best = - np.inf
 
         p_values = np.arange(p_min, p_max +1, dtype=int)
-        # p_list = [3 * pi - 2 *m for pi in p_values if (3 * pi - 2 *m) >0]
-        for p in p_values:
-            xr, fr, stats, I_sorted = iter_ilst(p, vr,xr,A ,b, max_it)
-            Lpp1 = 0.5 * fr**2
-            if p == p_values[0]:
-                xr_best, fr_best, stats_best, I_sorted_best = (xr, fr, stats, I_sorted)
-            else:
-                crit = (Lpp1 - Lp)/Lp
-                if crit > crit_best:
-                    xr_best, fr_best, stats_best, I_sorted_best = (xr, fr, stats, I_sorted)
-                    p_best = p
-                    crit_best = crit
-            Lp = Lpp1
+        p_list = [3 * pi - 2 *m for pi in p_values if (3 * pi - 2 *m) >0]
+        xr_best, fr_best, stats_best, I_sorted_best, p_best = [None]*5
+        for p in p_list:
+            xr_i, fr_i, stats_i, I_sorted_i = iter_ilst(p, vr,xr,A ,b, max_it)
+            _, fr_ip1, _, _ = iter_ilst(p, vr,xr,A ,b, max_it)
+            Lp_i = 0.5 * fr_i**2
+            Lp_ip1 = 0.5 * fr_ip1**2
+            crit = (Lp_ip1 - Lp_i)/Lp_i
+            if crit > crit_best:
+                xr_best, fr_best, stats_best, I_sorted_best = (xr_i, fr_i, stats_i, I_sorted_i)
+                p_best = p
+                crit_best = crit
         return xr_best, fr_best, stats_best, I_sorted_best, p_best
     else:
         xr, fr, stats, I_sorted = iter_ilst(p, vr,xr,A ,b, max_it)
@@ -127,7 +126,7 @@ def AIC(Ci, y, A):
     candidate terms."""
     m = y.shape[0]
     k = int(np.count_nonzero(Ci))
-    rss = float(np.sum((y[:, 0] - A @ Ci[:, 0]) ** 2))
+    rss = float(np.sum((y - A @ Ci) ** 2))
     rss = max(rss, np.finfo(float).tiny)  # guard log(0)
     aic = m * np.log(rss / m) + 2 * k
     denom = m - k - 1
@@ -160,7 +159,7 @@ def SINDy_LTS(x_dot, D, p, threshold=1e-1, alpha = 0.0, max_it=2000):
         if threshold is not None:
             Ci = SINDy(y_dot, Ap, threshold=threshold,alpha=alpha)
         else:
-            eps_list = np.logspace(-5,1,7)
+            eps_list = np.logspace(-5,0,6)
             best_aic = np.inf
             best_Ci = None
             for eps in eps_list:
@@ -175,6 +174,117 @@ def SINDy_LTS(x_dot, D, p, threshold=1e-1, alpha = 0.0, max_it=2000):
     return Xi, I_sorted
 
 
+def SINDy_LTS_eps(x_dot, D, p, threshold=None, alpha = 0.0, max_it=2000):
+    """Same as `SINDy_LTS`, but also returns the threshold that was actually
+    used to fit every state's coefficients — the fixed `threshold` if given,
+    or, when `threshold=None`, the single AICc-chosen eps (see `AIC`) shared
+    across every state (chosen by summing each candidate's AIC across all
+    states, since the trusted subset — and so the AIC value — differs per
+    state even though the threshold is shared). Kept as a separate function
+    (rather than changing SINDy_LTS's return signature) so existing callers
+    of SINDy_LTS are unaffected."""
+    n = x_dot.shape[-1]
+    m = x_dot.shape[0]
+    nD = D.shape[-1]
+
+    if isinstance(p, (float, np.floating)): # is p is a percentage
+        if not 0 <= p <= 1:
+            raise ValueError('A float p must satisfy 0 <= p <= 1')
+        p = max(1, int(np.ceil(p * m)))
+
+    # Per-state LOVO trimming (the trusted subset differs per state, since
+    # each state has its own derivative/residuals), collected up front so
+    # the threshold search below can be done jointly across states.
+    I_sorted = np.zeros((m,n))
+    Ap_list = []
+    y_dot_list = []
+    for i in range(n):
+        _, _, stats, Is = ilts(D, x_dot[:,i], p, max_it)
+        I_sorted[:,i] = Is
+        Ir = Is[:p]
+        if stats == 0:
+            print('[Warning] LOVO not finished successefuly')
+        Ap_list.append(D[Ir])
+        y_dot_i = np.zeros((p,1))
+        y_dot_i[:,0] = x_dot[Ir,i]
+        y_dot_list.append(y_dot_i)
+
+    if threshold is not None:
+        chosen_eps = threshold
+    else:
+        eps_list = np.logspace(-5,0,6)
+        best_aic_total = np.inf
+        chosen_eps = eps_list[0]
+        for eps in eps_list:
+            aic_total = sum(
+                AIC(SINDy(y_dot, Ap, threshold=eps, alpha=alpha), y_dot, Ap)
+                for Ap, y_dot in zip(Ap_list, y_dot_list)
+            )
+            if aic_total < best_aic_total:
+                best_aic_total = aic_total
+                chosen_eps = eps
+
+    Xi = np.zeros((nD, n))
+    for i in range(n):
+        Xi[:,i:i+1] = SINDy(y_dot_list[i], Ap_list[i], threshold=chosen_eps, alpha=alpha)
+    return Xi, I_sorted, np.full(n, chosen_eps)
+
+
+def SINDy_LTS_eps_slope(x_dot, D, p=None, threshold=None, alpha = 0.0, max_it=2000, p_min = 0.8, p_max = 1.0):
+    """Same as `SINDy_LTS_eps`, but for threshold=None picks eps by a
+    slope/elbow criterion instead of AICc — mirroring the p-selection
+    criterion in `ilts_search` (max relative jump in loss), but as a literal
+    slope in eps-space rather than a jump relative to p: among consecutive
+    (increasing) candidates in eps_list, picks eps_k at the pair with the
+    largest (L(eps_{k+1}) - L(eps_k)) / (eps_{k+1} - eps_k), where L is the
+    residual sum of squares of the thresholded fit. Chosen per state (unlike
+    SINDy_LTS_eps's AICc search, which shares one threshold across states).
+    Kept as its own function (rather than changing SINDy_LTS_eps) so that
+    one is unaffected."""
+    n = x_dot.shape[-1]
+    m = x_dot.shape[0]
+    nD = D.shape[-1]
+
+    if isinstance(p, (float, np.floating)): # is p is a percentage
+        if not 0 <= p <= 1:
+            raise ValueError('A float p must satisfy 0 <= p <= 1')
+        p = max(1, int(np.ceil(p * m)))
+
+    Xi = np.zeros((nD, n))
+    I_sorted = np.zeros((m,n))
+    chosen_eps = np.zeros(n)
+    p_list = np.zeros(n)
+    for i in range(n):
+        _, _, stats, Is, pi = ilts_search(D, x_dot[:,i], p, max_it, p_min, p_max)
+        y_dot = np.zeros((pi,1))
+        p_list[i] = pi
+        I_sorted[:,i] = Is
+        Ir = Is[:pi]
+        if stats == 0:
+            print('[Warning] LOVO not finished successefuly')
+        Ap = D[Ir]
+        y_dot[:,0] = x_dot[Ir,i]
+        if threshold is not None:
+            Ci = SINDy(y_dot, Ap, threshold=threshold,alpha=alpha)
+            chosen_eps[i] = threshold
+        else:
+            eps_list = np.sort(np.logspace(-5,0,6))
+            Ci_list = [SINDy(y_dot, Ap, threshold=eps, alpha=alpha) for eps in eps_list]
+            L_list = [float(np.sum((y_dot[:, 0] - Ap @ Ci_k[:, 0]) ** 2)) for Ci_k in Ci_list]
+
+            crit_best = -np.inf
+            best_idx = 0
+            for k in range(len(eps_list) - 1):
+                crit = (L_list[k + 1] - L_list[k]) / (np.log(eps_list[k + 1]) - np.log(eps_list[k]))
+                if crit > crit_best:
+                    crit_best = crit
+                    best_idx = k
+
+            Ci = Ci_list[best_idx]
+            chosen_eps[i] = eps_list[best_idx]
+
+        Xi[:,i:i+1] = Ci
+    return Xi, I_sorted, chosen_eps, p_list
 
 
 def SINDy_LTS_search(x_dot, D, p=None, threshold=1e-1, alpha = 0.0, max_it=2000, p_min = 0.8, p_max = 1.0):
@@ -270,7 +380,7 @@ def FUN_SINDy(t, x, solu,  lib,  z_original_part_max = 1, sel_ind =  None, u=Non
     return f
 
 def simulate(coeff, lib, x0, tspan, t_eval, z_original_part_max = 1.,sel_ind =  None, u=None, **kwargs):
-    y = solve_ivp(FUN_SINDy, tspan, x0 ,t_eval=t_eval, vectorized=False, args=(coeff, lib, z_original_part_max, sel_ind, u), **kwargs).y.T
+    y = solve_ivp(FUN_SINDy, tspan, x0 ,t_eval=t_eval, vectorized=False, args=(coeff, lib, z_original_part_max, sel_ind, u), **kwargs)
     return y
 
 

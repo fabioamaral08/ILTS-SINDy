@@ -102,11 +102,13 @@ def save_run_results(path: Path, grid: dict[float, dict[float, list]]) -> None:
 def load_run_cell(
     results: np.lib.npyio.NpzFile, noise_level: float, outlier_percent: float
 ) -> dict:
-    """Returns dict with keys 'coefficients', 'hyperparams', 'trajectory_error', 'extra'."""
+    """Returns dict with keys 'coefficients', 'time', 'extra'. 'time'/'extra'
+    are None for results saved before that field existed (older runs), so
+    only consumers that actually need them should require non-None here."""
     cell = results[_noise_key(noise_level)].item()
     op = outlier_percent
     return {
         "coefficients": cell[_coeffs_key(op)],
-        "time": cell[_time_key(op)],
-        "extra": cell[_extra_key(op)],
+        "time": cell.get(_time_key(op)),
+        "extra": cell.get(_extra_key(op)),
     }

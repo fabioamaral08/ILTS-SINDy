@@ -1,9 +1,10 @@
-"""CLI: build a single execution-time boxplot figure (one axis per problem)
-comparing a list of methods, and print mean +- std fit time per method.
+"""CLI: build a single figure (one axis per problem) histogramming how often
+each AICc-chosen threshold was picked (extra['eps'], from SINDY-LTS-EPS /
+saved SINDY-LTS-AIC runs), and print the counts per problem/method.
 
 Usage:
-    python cli_time_benchmark.py --problems SIR LORENZ LV --methods SINDY ESINDY SINDY-LTS \
-        -o figs --format pdf
+    python cli_eps_histogram.py --problems SIR ROSSLER ABC VAN_DER_POL LORENZ LV \
+        --methods SINDY-LTS-AIC --coeffs-dir ../eps_search -o figs --format pdf
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import argparse
 
 import numpy as np
 
-from pipeline.analysis import ResultSet, plot_execution_time
+from pipeline.analysis import ResultSet, plot_eps_histogram
 from pipeline.methods import list_methods
 from pipeline.problems import list_problems
 
@@ -57,8 +58,8 @@ def main():
         for method_name in args.methods
     ]
 
-    out_path = f"{args.output_dir}/time_boxplot.{args.format}"
-    plot_execution_time(result_sets, methods=args.methods, output_path=out_path)
+    out_path = f"{args.output_dir}/eps_histogram.{args.format}"
+    plot_eps_histogram(result_sets, methods=args.methods, output_path=out_path)
     print(f"Saved {out_path}")
 
 

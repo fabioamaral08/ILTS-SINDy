@@ -1,11 +1,10 @@
-"""Runs SINDY-LTS with threshold=None (per-state AICc threshold search, see
-`lts.SINDy_LTS`/`lts.AIC`) over a Problem's noisy dataset grid, scoring each
-fit by trajectory prediction error and saving the best result per grid cell /
-realization. Mirrors `pipeline.inliers_search`'s p-search runner, but
-exercises SINDY-LTS's AIC-based threshold search instead of
-SINDY-LTS-SEARCH's internal p search — `p` still has to be supplied here
-since (unlike SINDY-LTS-SEARCH) SINDY-LTS doesn't search it, so it's derived
-per grid cell from the outlier fraction the same way `pipeline.runner` does.
+"""Runs SINDY-LTS with threshold=None (per-state slope/elbow threshold
+search, see `lts.SINDy_LTS_eps_slope`) over a Problem's noisy dataset grid,
+scoring each fit by trajectory prediction error and saving the best result
+per grid cell / realization. Mirrors `pipeline.aic_search`, but exercises
+SINDY-LTS-SLOPE's slope-based threshold search instead of SINDY-LTS-EPS's
+AICc search — `p` is still derived per grid cell from the outlier fraction
+the same way `pipeline.runner` does.
 """
 from __future__ import annotations
 
@@ -21,9 +20,9 @@ from . import io, metrics
 from .methods import get_method
 from .problems.base import Problem
 
-# Distinct from the "SINDY-LTS" method name so a fixed-threshold run and an
-# AIC-search run of the same method never collide on the same results file.
-_SAVE_NAME = "SINDY-LTS-AIC"
+# Distinct from "SINDY-LTS"/"SINDY-LTS-AIC" so this slope-search run never
+# collides with a fixed-threshold or AICc-search run's results file.
+_SAVE_NAME = "SINDY-LTS-SLOPE"
 
 
 @dataclass
@@ -37,10 +36,7 @@ class RunResult:
 class MethodRunner:
     def __init__(self, problem: Problem, library=None):
         self.problem = problem
-        # SINDY-LTS-EPS is identical to SINDY-LTS but also records the
-        # per-state AICc-chosen threshold in extra['eps'], which is what
-        # this AIC-search runner is actually for.
-        self.method = get_method("SINDY-LTS-EPS")
+        self.method = get_method("SINDY-LTS-SLOPE")
         self.library = library if library is not None else problem.feature_library()
 
     def _score(self, coefficients: np.ndarray, data: np.ndarray, t: np.ndarray) -> float:
@@ -89,10 +85,10 @@ class MethodRunner:
             for data in data_realizations:
                 tasks.append((noise_level, outlier_fraction, data, p))
 
-        # AIC search reruns SINDy per candidate threshold on top of the
+        # Slope search reruns SINDy per candidate threshold on top of the
         # existing per-realization ILTS fit, so each task is noticeably
         # slower than a fixed-threshold run — parallelize across processes
-        # the same way inliers_search/runner do.
+        # the same way inliers_search/runner/aic_search do.
         flat_results = Parallel(n_jobs=n_jobs)(
             delayed(self.run_single)(data, t, p, hyperparams) for _, _, data, p in tasks
         )

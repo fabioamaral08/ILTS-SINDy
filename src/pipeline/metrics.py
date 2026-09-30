@@ -15,6 +15,18 @@ def coefficient_accuracy(
     return float(np.mean(true_binary == estimated_binary))
 
 
+def coefficient_error(true_coeff: np.ndarray, estimated_coeff: np.ndarray) -> float:
+    """Relative coefficient estimation error ||estimated - true|| / ||true||
+    (Frobenius norm). Unlike `coefficient_accuracy`/`exact_recovery`, which
+    only compare which entries are nonzero, this also captures how far off
+    the estimated *magnitudes* are on the terms that were found — a model
+    that recovers the right support with badly-scaled coefficients still
+    scores well on accuracy/exact_recovery but poorly here."""
+    true_norm = float(np.linalg.norm(true_coeff))
+    diff_norm = float(np.linalg.norm(estimated_coeff - true_coeff))
+    return diff_norm / true_norm if true_norm > 0 else diff_norm
+
+
 def exact_recovery(
     true_coeff: np.ndarray, estimated_coeff: np.ndarray, tolerance: float = 1e-3
 ) -> bool:

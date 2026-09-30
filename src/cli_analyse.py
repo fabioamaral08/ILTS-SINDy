@@ -19,7 +19,15 @@ from pipeline.problems import list_problems
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--problems", required=True, nargs="+", choices=list_problems())
-    parser.add_argument("--methods", required=True, nargs="+", choices=list_methods())
+    parser.add_argument(
+        "--methods",
+        required=True,
+        nargs="+",
+        help=(
+            "Method labels to compare — these are just the saved results' file "
+            f"names, not necessarily a registered Method (registered: {list_methods()})."
+        ),
+    )
     parser.add_argument("--n-realizations", type=int, default=100)
     parser.add_argument(
         "--noise-levels", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
@@ -35,6 +43,18 @@ def main():
     parser.add_argument("-o", "--output-dir", default="figs")
     parser.add_argument(
         "--format", default="png", help="File format to save figures as (e.g. png, pdf, svg)."
+    )
+    parser.add_argument(
+        "--annot",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show mean/std text inside each heatmap cell (--no-annot for colormap only).",
+    )
+    parser.add_argument(
+        "--cell-size",
+        type=float,
+        default=0.6,
+        help="Physical size (inches) of one heatmap cell.",
     )
     args = parser.parse_args()
 
@@ -54,7 +74,14 @@ def main():
 
     for metric in args.metrics:
         out_path = f"{args.output_dir}/{metric}.{args.format}"
-        plot_metric_grid(result_sets, metric, methods=args.methods, output_path=out_path)
+        plot_metric_grid(
+            result_sets,
+            metric,
+            methods=args.methods,
+            output_path=out_path,
+            annot=args.annot,
+            cell_size=args.cell_size,
+        )
         print(f"Saved {out_path}")
 
 

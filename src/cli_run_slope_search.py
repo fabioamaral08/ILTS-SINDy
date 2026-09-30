@@ -1,8 +1,13 @@
-"""CLI: run a registered identification Method over a Problem's noisy dataset
-grid, grid-searching hyperparameters by trajectory prediction error.
+"""CLI: run SINDY-LTS with threshold=None (per-state slope/elbow threshold
+search, see `lts.SINDy_LTS_eps_slope`) over a Problem's noisy dataset grid,
+scoring each fit by trajectory prediction error. Mirrors
+`cli_run_aic_search.py`, but tests SINDY-LTS-SLOPE's slope-based threshold
+search instead of SINDY-LTS-EPS's AICc search; `p` is derived per grid cell
+from the outlier fraction (`p = m - 3 * outlier_fraction * m`), the same way
+`cli_run_method.py` does via `pipeline.runner`.
 
 Usage:
-    python cli_run_method.py --problem SIR --method SINDY-LTS --n-realizations 100
+    python cli_run_slope_search.py --problem SIR --n-realizations 100
 """
 from __future__ import annotations
 
@@ -11,9 +16,8 @@ import argparse
 import numpy as np
 
 from pipeline import io as pipeline_io
-from pipeline.methods import get_method, list_methods
+from pipeline.slope_search import MethodRunner
 from pipeline.problems import get_problem, list_problems
-from pipeline.inliers_search import MethodRunner
 
 
 def main():
@@ -27,20 +31,18 @@ def main():
         "--outlier-fractions", type=float, nargs="+", default=list(np.linspace(0, 0.2, 9)[1:])
     )
     parser.add_argument("--data-dir", default="data")
-    parser.add_argument("--eps", type=float, default=0.1)
     parser.add_argument("-o", "--output-dir", default="coeffs")
     args = parser.parse_args()
 
     problem = get_problem(args.problem)
     dataset_path = pipeline_io.dataset_path(problem.name, args.n_realizations, args.data_dir)
-    hyperparameter = {'threshold': args.eps}
+
     runner = MethodRunner(problem)
     path = runner.run_grid(
         dataset_path,
         args.noise_levels,
         args.outlier_fractions,
         args.n_realizations,
-        hyperparams=hyperparameter,
         output_dir=args.output_dir,
     )
     print(f"Saved results to {path}")

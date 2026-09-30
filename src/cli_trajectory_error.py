@@ -1,6 +1,7 @@
 """CLI: plot discovered-system trajectory error comparison from files saved
 by `cli_trajectory_error_run.py` — one saved result per problem/method pair.
-Pairs with no saved file are skipped.
+Pairs with no saved file are skipped. The problem legend is placed outside
+the axes.
 
 Usage:
     python cli_trajectory_error.py --problems SIR LORENZ LV \
@@ -19,7 +20,15 @@ from pipeline.problems import list_problems
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--problems", required=True, nargs="+", choices=list_problems())
-    parser.add_argument("--methods", required=True, nargs="+", choices=list_methods())
+    parser.add_argument(
+        "--methods",
+        required=True,
+        nargs="+",
+        help=(
+            "Method labels to compare — these are just the saved results' file "
+            f"names, not necessarily a registered Method (registered: {list_methods()})."
+        ),
+    )
     parser.add_argument("--coeffs-dir", default="coeffs")
     parser.add_argument("-o", "--output-dir", default="figs")
     parser.add_argument(
