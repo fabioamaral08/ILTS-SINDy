@@ -275,7 +275,7 @@ def SINDy_LTS_eps_slope(x_dot, D, p=None, threshold=None, alpha = 0.0, max_it=20
             crit_best = -np.inf
             best_idx = 0
             for k in range(len(eps_list) - 1):
-                crit = (L_list[k + 1] - L_list[k]) / (np.log(eps_list[k + 1]) - np.log(eps_list[k]))
+                crit = (L_list[k + 1] - L_list[k]) / ((eps_list[k + 1]) - (eps_list[k]))
                 if crit > crit_best:
                     crit_best = crit
                     best_idx = k
